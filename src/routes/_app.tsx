@@ -4,7 +4,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { useAuth } from "@/contexts/AuthContext";
 
-export const Route = createFileRoute("/_app")({ component: AppLayout });
+export const Route = createFileRoute("/_app")({ id: "_app", component: AppLayout });
 
 function AppLayout() {
   const { user, loading } = useAuth();
