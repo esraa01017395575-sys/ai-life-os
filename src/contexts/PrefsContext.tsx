@@ -81,14 +81,18 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [theme, mode, lang]);
 
-  const persist = (patch: Record<string, string>) => {
-    if (!user) return;
-    supabase.from("profiles").update(patch).eq("user_id", user.id).then(() => {});
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
+    if (user) supabase.from("profiles").update({ theme: newTheme }).eq("user_id", user.id).then(() => {});
   };
-
-  const setTheme = (t: Theme) => { setThemeState(t); persist({ theme: t }); };
-  const setMode = (m: "dark" | "light") => { setModeState(m); persist({ mode: m }); };
-  const setLang = (l: Lang) => { setLangState(l); persist({ language: l }); };
+  const setMode = (newMode: "dark" | "light") => {
+    setModeState(newMode);
+    if (user) supabase.from("profiles").update({ mode: newMode }).eq("user_id", user.id).then(() => {});
+  };
+  const setLang = (newLang: Lang) => {
+    setLangState(newLang);
+    if (user) supabase.from("profiles").update({ language: newLang }).eq("user_id", user.id).then(() => {});
+  };
 
   return (
     <PrefsContext.Provider value={{ theme, mode, lang, setTheme, setMode, setLang, t: (k) => translate(lang, k) }}>
