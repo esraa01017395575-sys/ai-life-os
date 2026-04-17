@@ -1,0 +1,10 @@
+project_id = "jfqklbuzmohmwpxvcarb"
+
+[functions.ai-chat]
+verify_jwt = true
+
+[functions.ai-quote]
+verify_jwt = true
+
+[functions.ai-subtasks]
+verify_jwt = true
