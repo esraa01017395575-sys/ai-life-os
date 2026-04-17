@@ -10,11 +10,24 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppTasksRouteImport } from './routes/_app.tasks'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
+import { Route as AppPlansRouteImport } from './routes/_app.plans'
+import { Route as AppNotesRouteImport } from './routes/_app.notes'
+import { Route as AppHabitsRouteImport } from './routes/_app.habits'
+import { Route as AppFavoritesRouteImport } from './routes/_app.favorites'
+import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppChatRouteImport } from './routes/_app.chat'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -22,30 +35,128 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppTasksRoute = AppTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPlansRoute = AppPlansRouteImport.update({
+  id: '/plans',
+  path: '/plans',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotesRoute = AppNotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppHabitsRoute = AppHabitsRouteImport.update({
+  id: '/habits',
+  path: '/habits',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFavoritesRoute = AppFavoritesRouteImport.update({
+  id: '/favorites',
+  path: '/favorites',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppChatRoute = AppChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/chat': typeof AppChatRoute
+  '/dashboard': typeof AppDashboardRoute
+  '/favorites': typeof AppFavoritesRoute
+  '/habits': typeof AppHabitsRoute
+  '/notes': typeof AppNotesRoute
+  '/plans': typeof AppPlansRoute
+  '/settings': typeof AppSettingsRoute
+  '/tasks': typeof AppTasksRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/chat': typeof AppChatRoute
+  '/dashboard': typeof AppDashboardRoute
+  '/favorites': typeof AppFavoritesRoute
+  '/habits': typeof AppHabitsRoute
+  '/notes': typeof AppNotesRoute
+  '/plans': typeof AppPlansRoute
+  '/settings': typeof AppSettingsRoute
+  '/tasks': typeof AppTasksRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_app/chat': typeof AppChatRoute
+  '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/favorites': typeof AppFavoritesRoute
+  '/_app/habits': typeof AppHabitsRoute
+  '/_app/notes': typeof AppNotesRoute
+  '/_app/plans': typeof AppPlansRoute
+  '/_app/settings': typeof AppSettingsRoute
+  '/_app/tasks': typeof AppTasksRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/chat'
+    | '/dashboard'
+    | '/favorites'
+    | '/habits'
+    | '/notes'
+    | '/plans'
+    | '/settings'
+    | '/tasks'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth'
-  id: '__root__' | '/' | '/auth'
+  to:
+    | '/'
+    | '/auth'
+    | '/chat'
+    | '/dashboard'
+    | '/favorites'
+    | '/habits'
+    | '/notes'
+    | '/plans'
+    | '/settings'
+    | '/tasks'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/auth'
+    | '/_app/chat'
+    | '/_app/dashboard'
+    | '/_app/favorites'
+    | '/_app/habits'
+    | '/_app/notes'
+    | '/_app/plans'
+    | '/_app/settings'
+    | '/_app/tasks'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRoute
 }
 
@@ -58,6 +169,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -65,13 +183,103 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/tasks': {
+      id: '/_app/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof AppTasksRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/plans': {
+      id: '/_app/plans'
+      path: '/plans'
+      fullPath: '/plans'
+      preLoaderRoute: typeof AppPlansRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/notes': {
+      id: '/_app/notes'
+      path: '/notes'
+      fullPath: '/notes'
+      preLoaderRoute: typeof AppNotesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/habits': {
+      id: '/_app/habits'
+      path: '/habits'
+      fullPath: '/habits'
+      preLoaderRoute: typeof AppHabitsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/favorites': {
+      id: '/_app/favorites'
+      path: '/favorites'
+      fullPath: '/favorites'
+      preLoaderRoute: typeof AppFavoritesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/dashboard': {
+      id: '/_app/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/chat': {
+      id: '/_app/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof AppChatRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppChatRoute: typeof AppChatRoute
+  AppDashboardRoute: typeof AppDashboardRoute
+  AppFavoritesRoute: typeof AppFavoritesRoute
+  AppHabitsRoute: typeof AppHabitsRoute
+  AppNotesRoute: typeof AppNotesRoute
+  AppPlansRoute: typeof AppPlansRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppTasksRoute: typeof AppTasksRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppChatRoute: AppChatRoute,
+  AppDashboardRoute: AppDashboardRoute,
+  AppFavoritesRoute: AppFavoritesRoute,
+  AppHabitsRoute: AppHabitsRoute,
+  AppNotesRoute: AppNotesRoute,
+  AppPlansRoute: AppPlansRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppTasksRoute: AppTasksRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
