@@ -1,13 +1,10 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { useAuth } from "@/contexts/AuthContext";
 
-export const Route = createFileRoute("/_app")({
-  component: AppLayout,
-});
+export const Route = createFileRoute("/_app")({ component: AppLayout });
 
 function AppLayout() {
   const { user, loading } = useAuth();

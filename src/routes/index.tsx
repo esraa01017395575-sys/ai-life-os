@@ -1,15 +1,18 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
-// Index redirects: signed-in -> dashboard, signed-out -> auth.
-export const Route = createFileRoute("/")({
-  beforeLoad: async () => {
-    if (typeof window === "undefined") return;
-    const { data } = await supabase.auth.getSession();
-    if (data.session) {
-      throw redirect({ to: "/dashboard" });
-    }
-    throw redirect({ to: "/auth" });
-  },
-  component: () => null,
-});
+export const Route = createFileRoute("/")({ component: Index });
+
+function Index() {
+  const { user, loading } = useAuth();
+  useEffect(() => {
+    if (loading) return;
+    window.location.href = user ? "/dashboard" : "/auth";
+  }, [user, loading]);
+  return (
+    <div className="min-h-screen bg-app flex items-center justify-center">
+      <div className="h-8 w-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+    </div>
+  );
+}
