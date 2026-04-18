@@ -7,7 +7,7 @@
 /* ===== Google fonts ===== */
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* ===== AI Life OS Design Tokens — Sage Productivity ===== */
+/* ===== AI Life OS Design Tokens — Playful Sage ===== */
 :root,
 :root[data-theme="midnight"] {
   --bg-primary: #F5F0E8;
@@ -16,16 +16,27 @@
   --bg-elevated: #FFFFFF;
   --accent: #2D5A3D;
   --accent-soft: #A8C0A0;
-  --accent-glow: rgba(45, 90, 61, 0.10);
+  --accent-glow: rgba(45, 90, 61, 0.12);
   --accent-strong: rgba(45, 90, 61, 0.30);
+  --accent-2: #F59E0B;       /* warm amber */
+  --accent-3: #EC4899;       /* playful pink */
+  --accent-4: #6366F1;       /* indigo */
+  --accent-5: #06B6D4;       /* cyan */
+  --gradient-hero: linear-gradient(135deg, #2D5A3D 0%, #06B6D4 50%, #6366F1 100%);
+  --gradient-warm: linear-gradient(135deg, #F59E0B 0%, #EC4899 100%);
+  --gradient-cool: linear-gradient(135deg, #6366F1 0%, #06B6D4 100%);
+  --gradient-card: linear-gradient(135deg, rgba(45,90,61,0.06) 0%, rgba(99,102,241,0.04) 100%);
+  --shadow-soft: 0 4px 16px rgba(45,90,61,0.08);
+  --shadow-elevated: 0 12px 40px rgba(45,90,61,0.12);
+  --shadow-glow: 0 0 32px rgba(45,90,61,0.18);
   --text-primary: #1A2E22;
   --text-secondary: #5A6B5F;
   --text-muted: #8A988E;
   --border: rgba(45, 90, 61, 0.10);
   --border-strong: rgba(45, 90, 61, 0.20);
   --success: #2D5A3D;
-  --warning: #D4A017;
-  --danger: #C44545;
+  --warning: #F59E0B;
+  --danger: #EF4444;
   --radius: 20px;
 }
 
