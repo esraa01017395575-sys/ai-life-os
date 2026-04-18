@@ -30,7 +30,7 @@ function AppLayout() {
   return (
     <div className="min-h-screen bg-app flex">
       <Sidebar />
-      <div className="flex-1 ltr:pl-[48px] rtl:pr-[48px] flex flex-col min-w-0">
+      <div className="flex-1 ltr:pl-[64px] rtl:pr-[64px] flex flex-col min-w-0">
         <Topbar />
         <main className="flex-1 min-w-0">
           <Outlet />
