@@ -7,7 +7,7 @@
 /* ===== Google fonts ===== */
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* ===== AI Life OS Design Tokens — Sage Productivity ===== */
+/* ===== AI Life OS Design Tokens — Playful Sage ===== */
 :root,
 :root[data-theme="midnight"] {
   --bg-primary: #F5F0E8;
@@ -16,16 +16,27 @@
   --bg-elevated: #FFFFFF;
   --accent: #2D5A3D;
   --accent-soft: #A8C0A0;
-  --accent-glow: rgba(45, 90, 61, 0.10);
+  --accent-glow: rgba(45, 90, 61, 0.12);
   --accent-strong: rgba(45, 90, 61, 0.30);
+  --accent-2: #F59E0B;       /* warm amber */
+  --accent-3: #EC4899;       /* playful pink */
+  --accent-4: #6366F1;       /* indigo */
+  --accent-5: #06B6D4;       /* cyan */
+  --gradient-hero: linear-gradient(135deg, #2D5A3D 0%, #06B6D4 50%, #6366F1 100%);
+  --gradient-warm: linear-gradient(135deg, #F59E0B 0%, #EC4899 100%);
+  --gradient-cool: linear-gradient(135deg, #6366F1 0%, #06B6D4 100%);
+  --gradient-card: linear-gradient(135deg, rgba(45,90,61,0.06) 0%, rgba(99,102,241,0.04) 100%);
+  --shadow-soft: 0 4px 16px rgba(45,90,61,0.08);
+  --shadow-elevated: 0 12px 40px rgba(45,90,61,0.12);
+  --shadow-glow: 0 0 32px rgba(45,90,61,0.18);
   --text-primary: #1A2E22;
   --text-secondary: #5A6B5F;
   --text-muted: #8A988E;
   --border: rgba(45, 90, 61, 0.10);
   --border-strong: rgba(45, 90, 61, 0.20);
   --success: #2D5A3D;
-  --warning: #D4A017;
-  --danger: #C44545;
+  --warning: #F59E0B;
+  --danger: #EF4444;
   --radius: 20px;
 }
 
@@ -164,26 +175,37 @@
     backdrop-filter: blur(12px);
     border: 1px solid var(--border);
     border-radius: var(--radius);
+    box-shadow: var(--shadow-soft);
   }
   .glass-elevated {
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius);
+    box-shadow: var(--shadow-elevated);
   }
-  .accent-glow {
-    box-shadow: 0 0 24px var(--accent-glow);
-  }
-  .accent-glow-strong {
-    box-shadow: 0 0 36px var(--accent-strong);
-  }
+  .accent-glow { box-shadow: 0 0 24px var(--accent-glow); }
+  .accent-glow-strong { box-shadow: 0 0 36px var(--accent-strong); }
   .smart-card {
     background: linear-gradient(135deg, var(--accent-glow), transparent);
     border: 1px solid var(--accent);
     border-radius: 14px;
     backdrop-filter: blur(10px);
   }
+  .gradient-hero { background: var(--gradient-hero); }
+  .gradient-warm { background: var(--gradient-warm); }
+  .gradient-cool { background: var(--gradient-cool); }
+  .gradient-card-bg { background: var(--gradient-card); }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-elevated { box-shadow: var(--shadow-elevated); }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
   .text-gradient {
-    background: linear-gradient(135deg, var(--accent), var(--accent-soft));
+    background: linear-gradient(135deg, var(--accent), var(--accent-4));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .text-gradient-warm {
+    background: var(--gradient-warm);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -200,13 +222,28 @@
   .border-app { border-color: var(--border); }
   .border-app-strong { border-color: var(--border-strong); }
   .text-accent { color: var(--accent); }
+  .text-accent-2 { color: var(--accent-2); }
+  .text-accent-3 { color: var(--accent-3); }
+  .text-accent-4 { color: var(--accent-4); }
+  .text-accent-5 { color: var(--accent-5); }
   .bg-accent { background: var(--accent); }
+  .bg-accent-2 { background: var(--accent-2); }
+  .bg-accent-3 { background: var(--accent-3); }
+  .bg-accent-4 { background: var(--accent-4); }
+  .bg-accent-5 { background: var(--accent-5); }
   .border-accent { border-color: var(--accent); }
   .ring-accent { --tw-ring-color: var(--accent); }
-  .hover-lift { transition: transform .2s ease, box-shadow .2s ease; }
-  .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 8px 24px var(--accent-glow); }
+  .hover-lift { transition: transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s ease; }
+  .hover-lift:hover { transform: translateY(-4px); box-shadow: var(--shadow-elevated); }
+  .hover-pop { transition: transform .25s cubic-bezier(.34,1.56,.64,1); }
+  .hover-pop:hover { transform: scale(1.04) rotate(-1deg); }
+  .blob {
+    position: absolute; border-radius: 50%; filter: blur(60px);
+    opacity: .35; pointer-events: none;
+  }
 }
 
+/* ===== Animations ===== */
 @keyframes pulse-ring {
   0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
   50% { box-shadow: 0 0 0 12px transparent; }
@@ -214,7 +251,46 @@
 .animate-pulse-ring { animation: pulse-ring 2s ease-out infinite; }
 
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.animate-fade-in-up { animation: fade-in-up .35s ease-out; }
+.animate-fade-in-up { animation: fade-in-up .5s cubic-bezier(.2,.8,.2,1); }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-float { animation: float 4s ease-in-out infinite; }
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-x 8s ease infinite;
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-6deg); }
+  75% { transform: rotate(6deg); }
+}
+.hover-wiggle:hover { animation: wiggle .4s ease-in-out; }
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow { animation: spin-slow 20s linear infinite; }
+
+@keyframes blob-move {
+  0%, 100% { transform: translate(0,0) scale(1); }
+  33% { transform: translate(20px,-30px) scale(1.1); }
+  66% { transform: translate(-20px,20px) scale(.95); }
+}
+.animate-blob { animation: blob-move 14s ease-in-out infinite; }
