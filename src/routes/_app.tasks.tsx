@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Plus, X, Sparkles, Calendar as CalIcon, KanbanSquare } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Plus, X, Sparkles, Calendar as CalIcon, KanbanSquare, Search,
+  Play, Check, MoreHorizontal, Clock, Pencil, Trash2, Focus,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePrefs } from "@/contexts/PrefsContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,8 +21,16 @@ interface Task {
   priority: string; category: string | null; due_date: string | null;
   scheduled_at: string | null; estimated_min: number | null;
   pomodoro_work: number | null; pomodoro_break: number | null; xp_reward: number;
+  pomodoro_count?: number; actual_min?: number;
 }
 interface Subtask { id: string; title: string; status: string; order_index: number }
+
+const STATUS_ACCENT: Record<string, { dot: string; bar: string; bg: string; label: string }> = {
+  draft:  { dot: "bg-app-muted",  bar: "var(--text-muted)",     bg: "bg-app-secondary/40", label: "text-app-muted" },
+  todo:   { dot: "bg-app-faint",  bar: "var(--text-secondary)", bg: "bg-app-secondary/60", label: "text-app-muted" },
+  doing:  { dot: "bg-warning",    bar: "var(--warning)",        bg: "bg-warning/5",        label: "text-warning" },
+  done:   { dot: "bg-success",    bar: "var(--success)",        bg: "bg-success/5",        label: "text-success" },
+};
 
 function TasksPage() {
   const { user } = useAuth();
@@ -28,8 +39,12 @@ function TasksPage() {
   const navigate = Route.useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [active, setActive] = useState<Task | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [creatingIn, setCreatingIn] = useState<TaskStatus | null>(null);
   const [newTitle, setNewTitle] = useState("");
+  const [search, setSearch] = useState("");
+  const [focusMode, setFocusMode] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
 
   useEffect(() => { void load(); }, [user]);
 
@@ -39,15 +54,15 @@ function TasksPage() {
     setTasks((data ?? []) as Task[]);
   }
 
-  async function createTask() {
-    if (!user || !newTitle.trim()) return;
+  async function createTask(status: TaskStatus) {
+    if (!user || !newTitle.trim()) { setCreatingIn(null); setNewTitle(""); return; }
     const { data, error } = await supabase.from("tasks").insert({
-      user_id: user.id, title: newTitle.trim(), status: "todo", priority: "medium",
+      user_id: user.id, title: newTitle.trim(), status, priority: "medium",
     }).select().single();
     if (error) { toast.error(error.message); return; }
     setTasks((ts) => [...ts, data as Task]);
     setNewTitle("");
-    setCreating(false);
+    setCreatingIn(null);
   }
 
   async function updateStatus(id: string, status: TaskStatus) {
@@ -63,104 +78,276 @@ function TasksPage() {
     }
   }
 
+  async function deleteTask(id: string) {
+    const { error } = await supabase.from("tasks").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else setTasks((ts) => ts.filter((x) => x.id !== id));
+  }
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return q ? tasks.filter((t) => t.title.toLowerCase().includes(q)) : tasks;
+  }, [tasks, search]);
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
-        <h1 className="text-3xl font-display font-bold">{t("tasks")}</h1>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-app overflow-hidden">
+      {/* Top bar */}
+      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-display font-bold">{t("tasks")}</h1>
+          <p className="text-sm text-app-muted mt-1">{filtered.length} {filtered.length === 1 ? "task" : "tasks"}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative">
+            <Search className="h-4 w-4 absolute ltr:left-3 rtl:right-3 top-1/2 -translate-y-1/2 text-app-muted pointer-events-none" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("search") || "Search..."}
+              className="h-10 ltr:pl-9 rtl:pr-9 ltr:pr-3 rtl:pl-3 w-56 rounded-xl bg-app-card border border-app focus:border-accent outline-none text-sm transition-colors" />
+          </div>
+          <div className="flex rounded-xl bg-app-secondary p-1 gap-1">
             <button onClick={() => navigate({ search: { view: "kanban" } })}
-              className={`h-9 px-3 text-sm flex items-center gap-1.5 ${view === "kanban" ? "bg-accent text-white" : "bg-app-card text-app-muted"}`}>
+              className={`h-8 px-3 text-sm flex items-center gap-1.5 rounded-lg transition-all ${view === "kanban" ? "bg-app-card text-app shadow-sm" : "text-app-muted hover:text-app"}`}>
               <KanbanSquare className="h-4 w-4" /> {t("kanban")}
             </button>
             <button onClick={() => navigate({ search: { view: "calendar" } })}
-              className={`h-9 px-3 text-sm flex items-center gap-1.5 ${view === "calendar" ? "bg-accent text-white" : "bg-app-card text-app-muted"}`}>
+              className={`h-8 px-3 text-sm flex items-center gap-1.5 rounded-lg transition-all ${view === "calendar" ? "bg-app-card text-app shadow-sm" : "text-app-muted hover:text-app"}`}>
               <CalIcon className="h-4 w-4" /> {t("calendar")}
             </button>
           </div>
-          <button onClick={() => setCreating(true)} className="h-9 px-3 rounded-lg bg-accent text-white text-sm font-medium flex items-center gap-1.5">
+          <button onClick={() => setFocusMode((v) => !v)}
+            className={`h-10 px-3 rounded-xl border text-sm flex items-center gap-1.5 transition-all ${focusMode ? "bg-warning/10 border-warning/30 text-warning" : "bg-app-card border-app text-app-muted hover:border-accent"}`}>
+            <Focus className="h-4 w-4" /> Focus
+          </button>
+          <button onClick={() => { setCreatingIn("todo"); setNewTitle(""); }}
+            className="h-10 px-4 rounded-xl bg-accent text-white text-sm font-medium flex items-center gap-1.5 hover:opacity-90 accent-glow transition-all">
             <Plus className="h-4 w-4" /> {t("addTask")}
           </button>
         </div>
       </div>
 
-      {creating && (
-        <div className="glass-card p-3 mb-4 flex gap-2">
-          <input autoFocus value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && createTask()}
-            placeholder={t("newTask")}
-            className="flex-1 h-10 px-3 rounded-lg bg-app-elevated border border-app focus:border-accent outline-none text-app" />
-          <button onClick={createTask} className="h-10 px-3 rounded-lg bg-accent text-white text-sm">{t("save")}</button>
-          <button onClick={() => { setCreating(false); setNewTitle(""); }} className="h-10 px-3 rounded-lg bg-app-card text-app-muted text-sm">{t("cancel")}</button>
-        </div>
-      )}
-
       {view === "kanban" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          {TASK_STATUSES.map((status) => (
-            <div key={status} className="bg-app-secondary rounded-xl p-3 min-h-[300px]">
-              <div className="flex items-center justify-between mb-3 px-1">
-                <h3 className="font-display font-semibold text-sm uppercase tracking-wider text-app-muted">
-                  {TASK_STATUS_LABEL[status][lang]}
-                </h3>
-                <span className="text-xs font-mono text-app-muted">{tasks.filter((t) => t.status === status).length}</span>
-              </div>
-              <div className="space-y-2">
-                {tasks.filter((t) => t.status === status).map((task) => (
-                  <button key={task.id} onClick={() => setActive(task)}
-                    className="w-full text-left glass-card p-3 hover-lift">
-                    <div className="text-sm font-medium text-app">{task.title}</div>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase ${
-                        task.priority === "urgent" ? "bg-danger/20 text-danger" :
-                        task.priority === "high" ? "bg-warning/20 text-warning" :
-                        "bg-app-elevated text-app-muted"
-                      }`}>{task.priority}</span>
-                      {task.estimated_min && <span className="text-[10px] px-1.5 py-0.5 rounded bg-app-elevated text-app-muted">{task.estimated_min}m</span>}
-                    </div>
-                    <div className="flex gap-1 mt-2">
-                      {TASK_STATUSES.filter((s) => s !== status).map((s) => (
-                        <button key={s} onClick={(e) => { e.stopPropagation(); updateStatus(task.id, s); }}
-                          className="text-[10px] px-1.5 py-0.5 rounded bg-app-elevated hover:bg-accent hover:text-white text-app-muted">
-                          → {TASK_STATUS_LABEL[s][lang]}
-                        </button>
-                      ))}
-                    </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {TASK_STATUSES.map((status) => {
+            const conf = STATUS_ACCENT[status];
+            const isFocus = focusMode && status !== "doing";
+            const colTasks = filtered.filter((t) => t.status === status);
+            const isDoing = status === "doing";
+            return (
+              <div
+                key={status}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(status); }}
+                onDragLeave={() => setDragOver((s) => s === status ? null : s)}
+                onDrop={() => {
+                  if (dragId) updateStatus(dragId, status as TaskStatus);
+                  setDragId(null); setDragOver(null);
+                }}
+                className={`rounded-2xl p-3 transition-all ${conf.bg} ${dragOver === status ? "ring-2 ring-accent/40" : ""} ${isFocus ? "opacity-30 scale-[0.98]" : ""} ${isDoing && focusMode ? "lg:col-span-2" : ""}`}
+                style={{ minHeight: 320 }}
+              >
+                <div className="flex items-center justify-between mb-3 px-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2 w-2 rounded-full ${conf.dot}`} />
+                    <h3 className={`font-display font-semibold text-xs uppercase tracking-wider ${conf.label}`}>
+                      {TASK_STATUS_LABEL[status][lang]}
+                    </h3>
+                    <span className="text-xs font-mono text-app-muted bg-app-card/60 px-1.5 rounded">{colTasks.length}</span>
+                  </div>
+                  <button onClick={() => { setCreatingIn(status); setNewTitle(""); }}
+                    className="h-6 w-6 rounded-lg hover:bg-app-card text-app-muted hover:text-accent flex items-center justify-center transition-colors">
+                    <Plus className="h-3.5 w-3.5" />
                   </button>
-                ))}
+                </div>
+
+                <div className="space-y-2">
+                  {creatingIn === status && (
+                    <div className="bg-app-card rounded-xl p-3 border-2 border-accent/40 animate-fade-in-up">
+                      <input autoFocus value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") createTask(status); if (e.key === "Escape") { setCreatingIn(null); setNewTitle(""); } }}
+                        onBlur={() => createTask(status)}
+                        placeholder={t("newTask") || "Task title..."}
+                        className="w-full bg-transparent outline-none text-sm text-app placeholder:text-app-muted" />
+                      <div className="text-[10px] text-app-muted mt-1.5">Enter to save · Esc to cancel</div>
+                    </div>
+                  )}
+
+                  {colTasks.map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onOpen={() => setActive(task)}
+                      onAdvance={() => {
+                        const next: Record<string, TaskStatus> = { draft: "todo", todo: "doing", doing: "done", done: "done" };
+                        updateStatus(task.id, next[task.status]);
+                      }}
+                      onMove={(s) => updateStatus(task.id, s)}
+                      onDelete={() => deleteTask(task.id)}
+                      onDragStart={() => setDragId(task.id)}
+                      onDragEnd={() => { setDragId(null); setDragOver(null); }}
+                    />
+                  ))}
+
+                  {colTasks.length === 0 && creatingIn !== status && (
+                    <button onClick={() => { setCreatingIn(status); setNewTitle(""); }}
+                      className="w-full py-8 text-center text-xs text-app-muted hover:text-accent border-2 border-dashed border-app rounded-xl hover:border-accent/40 transition-colors">
+                      <div className="text-2xl mb-1">✨</div>
+                      No tasks here
+                      <div className="text-[10px] mt-0.5 opacity-70">Click to add one</div>
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
-        <CalendarView tasks={tasks} onPick={setActive} />
+        <CalendarView tasks={filtered} onPick={setActive} />
       )}
 
-      {active && <TaskDetail task={active} onClose={() => setActive(null)} onUpdated={() => { void load(); }} />}
+      {active && <TaskDetail task={active} onClose={() => setActive(null)} onUpdated={() => { void load(); }} onDelete={(id) => { deleteTask(id); setActive(null); }} />}
     </div>
   );
 }
 
+/* ============== Task Card ============== */
+function TaskCard({
+  task, onOpen, onAdvance, onMove, onDelete, onDragStart, onDragEnd,
+}: {
+  task: Task;
+  onOpen: () => void;
+  onAdvance: () => void;
+  onMove: (s: TaskStatus) => void;
+  onDelete: () => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+}) {
+  const [menu, setMenu] = useState(false);
+  const conf = STATUS_ACCENT[task.status] ?? STATUS_ACCENT.todo;
+  const isDone = task.status === "done";
+  const isDoing = task.status === "doing";
+
+  const ctaLabel = task.status === "doing" ? "Continue" : task.status === "done" ? "Done" : "Start";
+  const CtaIcon = task.status === "done" ? Check : Play;
+
+  // pseudo progress for doing (based on pomodoro_count vs estimated)
+  const progress = isDoing && task.estimated_min
+    ? Math.min(100, Math.round(((task.actual_min ?? 0) / task.estimated_min) * 100))
+    : 0;
+
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onClick={onOpen}
+      className={`group relative bg-app-card rounded-xl p-3 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${isDone ? "opacity-60" : ""}`}
+      style={{ borderLeft: `3px solid ${conf.bar}` }}
+    >
+      {/* Title */}
+      <div className="flex items-start justify-between gap-2">
+        <div className={`text-sm font-medium leading-snug flex-1 ${isDone ? "line-through text-app-muted" : "text-app"}`}>
+          {task.title}
+        </div>
+        <div className="relative shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={(e) => { e.stopPropagation(); setMenu((v) => !v); }}
+            className="h-6 w-6 rounded-lg hover:bg-app-secondary text-app-muted flex items-center justify-center">
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </button>
+          {menu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setMenu(false); }} />
+              <div onClick={(e) => e.stopPropagation()}
+                className="absolute z-50 ltr:right-0 rtl:left-0 top-7 w-44 bg-app-elevated border border-app rounded-xl shadow-xl p-1 animate-fade-in-up">
+                <button onClick={() => { setMenu(false); onOpen(); }}
+                  className="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-app-secondary flex items-center gap-2">
+                  <Pencil className="h-3.5 w-3.5" /> Edit
+                </button>
+                {TASK_STATUSES.filter((s) => s !== task.status).map((s) => (
+                  <button key={s} onClick={() => { setMenu(false); onMove(s); }}
+                    className="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-app-secondary flex items-center gap-2">
+                    <span className={`h-2 w-2 rounded-full ${STATUS_ACCENT[s].dot}`} /> Move to {TASK_STATUS_LABEL[s].en}
+                  </button>
+                ))}
+                <div className="h-px bg-app my-1" />
+                <button onClick={() => { setMenu(false); onDelete(); }}
+                  className="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-danger/10 text-danger flex items-center gap-2">
+                  <Trash2 className="h-3.5 w-3.5" /> Delete
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Meta row */}
+      {(task.estimated_min || task.due_date || task.priority !== "medium") && (
+        <div className="flex flex-wrap gap-1.5 mt-2.5">
+          {task.priority && task.priority !== "medium" && (
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium uppercase tracking-wide ${
+              task.priority === "urgent" ? "bg-danger/15 text-danger" :
+              task.priority === "high"   ? "bg-warning/15 text-warning" :
+                                           "bg-app-secondary text-app-muted"
+            }`}>{task.priority}</span>
+          )}
+          {task.estimated_min && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-app-secondary text-app-muted flex items-center gap-1">
+              <Clock className="h-2.5 w-2.5" /> {task.estimated_min}m
+            </span>
+          )}
+          {task.due_date && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-app-secondary text-app-muted">
+              {new Date(task.due_date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Progress bar (Doing) */}
+      {isDoing && progress > 0 && (
+        <div className="mt-3 h-1 rounded-full bg-app-secondary overflow-hidden">
+          <div className="h-full bg-warning transition-all" style={{ width: `${progress}%` }} />
+        </div>
+      )}
+
+      {/* CTA */}
+      {!isDone && (
+        <button onClick={(e) => { e.stopPropagation(); onAdvance(); }}
+          className={`mt-3 w-full h-8 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
+            isDoing ? "bg-warning/15 text-warning hover:bg-warning/25" : "bg-accent/10 text-accent hover:bg-accent/20"
+          }`}>
+          <CtaIcon className="h-3.5 w-3.5" /> {ctaLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ============== Calendar ============== */
 function CalendarView({ tasks, onPick }: { tasks: Task[]; onPick: (t: Task) => void }) {
   const today = new Date();
   const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(today); d.setDate(today.getDate() + i); return d;
   });
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-2">
-      {days.map((d) => {
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3">
+      {days.map((d, idx) => {
         const ds = d.toISOString().slice(0, 10);
         const dayTasks = tasks.filter((t) => (t.scheduled_at ?? t.due_date)?.slice(0, 10) === ds);
+        const isToday = idx === 0;
         return (
-          <div key={ds} className="glass-card p-3 min-h-[120px]">
-            <div className="text-xs uppercase tracking-wider text-app-muted">{d.toLocaleDateString(undefined, { weekday: "short" })}</div>
-            <div className="font-display font-bold text-2xl">{d.getDate()}</div>
+          <div key={ds} className={`bg-app-card rounded-2xl p-3 min-h-[140px] ${isToday ? "ring-2 ring-accent/40" : ""}`}>
+            <div className="text-[10px] uppercase tracking-wider text-app-muted">{d.toLocaleDateString(undefined, { weekday: "short" })}</div>
+            <div className={`font-display font-bold text-2xl ${isToday ? "text-accent" : "text-app"}`}>{d.getDate()}</div>
             <div className="space-y-1 mt-2">
-              {dayTasks.map((task) => (
-                <button key={task.id} onClick={() => onPick(task)} className="w-full text-left text-xs px-2 py-1 rounded bg-accent/20 text-accent truncate hover:bg-accent/30">
-                  {task.title}
-                </button>
-              ))}
+              {dayTasks.map((task) => {
+                const conf = STATUS_ACCENT[task.status] ?? STATUS_ACCENT.todo;
+                return (
+                  <button key={task.id} onClick={() => onPick(task)}
+                    className="w-full text-left text-xs px-2 py-1.5 rounded-lg bg-app-secondary hover:bg-app-elevated truncate transition-colors flex items-center gap-1.5"
+                    style={{ borderLeft: `2px solid ${conf.bar}` }}>
+                    <span className="truncate">{task.title}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         );
@@ -169,7 +356,10 @@ function CalendarView({ tasks, onPick }: { tasks: Task[]; onPick: (t: Task) => v
   );
 }
 
-function TaskDetail({ task, onClose, onUpdated }: { task: Task; onClose: () => void; onUpdated: () => void }) {
+/* ============== Edit Panel (slide-in 70/30) ============== */
+function TaskDetail({
+  task, onClose, onUpdated, onDelete,
+}: { task: Task; onClose: () => void; onUpdated: () => void; onDelete: (id: string) => void }) {
   const { user } = useAuth();
   const { t } = usePrefs();
   const [subs, setSubs] = useState<Subtask[]>([]);
@@ -177,6 +367,7 @@ function TaskDetail({ task, onClose, onUpdated }: { task: Task; onClose: () => v
   const [genLoading, setGenLoading] = useState(false);
   const [showPomo, setShowPomo] = useState(false);
   const [edited, setEdited] = useState(task);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => { void loadSubs(); }, [task.id]);
 
@@ -201,6 +392,11 @@ function TaskDetail({ task, onClose, onUpdated }: { task: Task; onClose: () => v
     setSubs((all) => all.map((x) => x.id === s.id ? { ...x, status: next } : x));
   }
 
+  async function removeSub(id: string) {
+    await supabase.from("subtasks").delete().eq("id", id);
+    setSubs((all) => all.filter((x) => x.id !== id));
+  }
+
   async function generateSubs() {
     if (!user) return;
     setGenLoading(true);
@@ -209,7 +405,7 @@ function TaskDetail({ task, onClose, onUpdated }: { task: Task; onClose: () => v
       const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-subtasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
-        body: JSON.stringify({ title: task.title, description: task.description }),
+        body: JSON.stringify({ title: edited.title, description: edited.description }),
       });
       const j = await r.json();
       if (j.subtasks?.length) {
@@ -218,104 +414,230 @@ function TaskDetail({ task, onClose, onUpdated }: { task: Task; onClose: () => v
         }));
         const { data } = await supabase.from("subtasks").insert(rows).select();
         if (data) setSubs((s) => [...s, ...(data as Subtask[])]);
+        toast.success(`Added ${j.subtasks.length} subtasks`);
       }
     } catch (e: any) { toast.error(e.message); }
     setGenLoading(false);
   }
 
   async function save() {
+    setSaving(true);
     const { error } = await supabase.from("tasks").update({
       title: edited.title, description: edited.description, priority: edited.priority,
-      category: edited.category, estimated_min: edited.estimated_min,
-      due_date: edited.due_date, pomodoro_work: edited.pomodoro_work, pomodoro_break: edited.pomodoro_break,
+      status: edited.status, category: edited.category, estimated_min: edited.estimated_min,
+      due_date: edited.due_date, scheduled_at: edited.scheduled_at,
+      pomodoro_work: edited.pomodoro_work, pomodoro_break: edited.pomodoro_break,
     }).eq("id", task.id);
-    if (error) toast.error(error.message); else { toast.success("Saved"); onUpdated(); }
+    setSaving(false);
+    if (error) toast.error(error.message);
+    else { toast.success("Saved"); onUpdated(); onClose(); }
   }
 
+  const completedSubs = subs.filter((s) => s.status === "done").length;
+
   return (
-    <div className="fixed inset-0 z-50 flex" onClick={onClose}>
-      <div className="flex-1 bg-black/40" />
-      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-app-secondary border-l border-app overflow-y-auto animate-fade-in-up">
-        <div className="p-5 space-y-4">
-          <div className="flex justify-between items-start gap-2">
-            <input value={edited.title} onChange={(e) => setEdited({ ...edited, title: e.target.value })}
-              className="flex-1 bg-transparent text-xl font-display font-semibold text-app outline-none" />
-            <button onClick={onClose} className="text-app-muted hover:text-app"><X className="h-5 w-5" /></button>
+    <div className="fixed inset-0 z-50 flex animate-fade-in-up" onClick={onClose}>
+      <div className="flex-1 bg-black/40 backdrop-blur-sm" />
+      <div onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-3xl bg-app-secondary ltr:border-l rtl:border-r border-app overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-app bg-app-card">
+          <div className="flex items-center gap-2">
+            <span className={`h-2 w-2 rounded-full ${STATUS_ACCENT[edited.status].dot}`} />
+            <h2 className="font-display font-semibold text-lg">Edit Task</h2>
           </div>
-          <textarea value={edited.description ?? ""} onChange={(e) => setEdited({ ...edited, description: e.target.value })}
-            placeholder={t("description")} rows={3}
-            className="w-full p-3 rounded-lg bg-app-card border border-app focus:border-accent outline-none text-sm text-app" />
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <label className="space-y-1">
-              <span className="text-xs text-app-muted">{t("priority")}</span>
-              <select value={edited.priority} onChange={(e) => setEdited({ ...edited, priority: e.target.value })}
-                className="w-full h-9 px-2 rounded-lg bg-app-card border border-app text-app">
-                {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </label>
-            <label className="space-y-1">
-              <span className="text-xs text-app-muted">{t("estimatedMin")}</span>
-              <input type="number" value={edited.estimated_min ?? ""} onChange={(e) => setEdited({ ...edited, estimated_min: e.target.value ? Number(e.target.value) : null })}
-                className="w-full h-9 px-2 rounded-lg bg-app-card border border-app text-app" />
-            </label>
-            <label className="space-y-1">
-              <span className="text-xs text-app-muted">{t("category")}</span>
-              <input value={edited.category ?? ""} onChange={(e) => setEdited({ ...edited, category: e.target.value })}
-                className="w-full h-9 px-2 rounded-lg bg-app-card border border-app text-app" />
-            </label>
-            <label className="space-y-1">
-              <span className="text-xs text-app-muted">{t("dueDate")}</span>
-              <input type="date" value={edited.due_date?.slice(0, 10) ?? ""} onChange={(e) => setEdited({ ...edited, due_date: e.target.value || null })}
-                className="w-full h-9 px-2 rounded-lg bg-app-card border border-app text-app" />
-            </label>
-          </div>
-          <button onClick={save} className="w-full h-10 rounded-lg bg-accent text-white text-sm font-medium">{t("save")}</button>
+          <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-app-secondary text-app-muted hover:text-app flex items-center justify-center transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-display font-semibold text-sm">{t("subtasks")}</h3>
-              <button onClick={generateSubs} disabled={genLoading}
-                className="text-xs px-2 py-1 rounded bg-accent/20 text-accent flex items-center gap-1 hover:bg-accent/30 disabled:opacity-50">
-                <Sparkles className="h-3 w-3" />{genLoading ? "…" : "AI"}
-              </button>
-            </div>
-            <ul className="space-y-1 mb-2">
-              {subs.map((s) => (
-                <li key={s.id} className="flex items-center gap-2 text-sm">
-                  <button onClick={() => toggleSub(s)}
-                    className={`h-4 w-4 rounded border-2 ${s.status === "done" ? "bg-accent border-accent" : "border-app-strong"}`} />
-                  <span className={s.status === "done" ? "line-through text-app-muted" : "text-app"}>{s.title}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="flex gap-1">
-              <input value={newSub} onChange={(e) => setNewSub(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addSub()}
-                placeholder="Add subtask…" className="flex-1 h-8 px-2 rounded bg-app-card border border-app text-sm text-app outline-none focus:border-accent" />
-              <button onClick={addSub} className="h-8 px-2 rounded bg-accent text-white text-xs">+</button>
-            </div>
-          </div>
+        {/* Body — 2-column 70/30 */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 p-6">
+            {/* LEFT */}
+            <div className="space-y-5 min-w-0">
+              {/* Title */}
+              <input value={edited.title} onChange={(e) => setEdited({ ...edited, title: e.target.value })}
+                placeholder="Write your task..."
+                className="w-full text-2xl font-display font-semibold bg-transparent outline-none text-app placeholder:text-app-muted" />
 
-          <div>
-            <button onClick={() => setShowPomo((v) => !v)}
-              className="w-full h-9 rounded-lg bg-app-card border border-app text-sm font-medium hover:border-accent">
-              {showPomo ? "Hide" : t("startPomodoro")}
-            </button>
-            {showPomo && (
-              <div className="mt-3 p-4 glass-card">
-                <Pomodoro
-                  workMin={edited.pomodoro_work ?? 25}
-                  breakMin={edited.pomodoro_break ?? 5}
-                  onComplete={async (mins) => {
-                    if (!user) return;
-                    await supabase.from("pomodoro_sessions").insert({ user_id: user.id, task_id: task.id, duration_min: mins });
-                    await supabase.from("tasks").update({ pomodoro_count: (task as any).pomodoro_count + 1, actual_min: ((task as any).actual_min ?? 0) + mins }).eq("id", task.id);
-                  }}
+              {/* Description */}
+              <textarea value={edited.description ?? ""} onChange={(e) => setEdited({ ...edited, description: e.target.value })}
+                placeholder="Add a description..." rows={3}
+                className="w-full p-4 rounded-2xl bg-app-card border border-app focus:border-accent outline-none text-sm text-app resize-none transition-colors" />
+
+              {/* AI Card */}
+              <div className="relative rounded-2xl p-5 overflow-hidden border border-accent/20"
+                style={{ background: "linear-gradient(135deg, var(--accent-glow), transparent 60%)" }}>
+                <div className="absolute top-0 right-0 h-24 w-24 rounded-full blur-3xl opacity-40" style={{ background: "var(--accent)" }} />
+                <div className="relative flex items-start gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-accent/20 flex items-center justify-center shrink-0">
+                    <Sparkles className="h-5 w-5 text-accent" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-display font-semibold text-app">Generate subtasks with AI</div>
+                    <div className="text-xs text-app-muted mt-0.5">Break your task into actionable steps</div>
+                  </div>
+                  <button onClick={generateSubs} disabled={genLoading || !edited.title}
+                    className="h-9 px-4 rounded-xl bg-accent text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 shrink-0 transition-opacity">
+                    {genLoading ? "..." : "Generate"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Subtasks */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-display font-semibold text-sm">{t("subtasks") || "Subtasks"}</h3>
+                  {subs.length > 0 && (
+                    <span className="text-xs text-app-muted font-mono">{completedSubs}/{subs.length}</span>
+                  )}
+                </div>
+                <ul className="space-y-1">
+                  {subs.map((s) => (
+                    <li key={s.id} className="group flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-app-card transition-colors">
+                      <button onClick={() => toggleSub(s)}
+                        className={`h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${s.status === "done" ? "bg-accent border-accent" : "border-app-strong hover:border-accent"}`}>
+                        {s.status === "done" && <Check className="h-3 w-3 text-white" />}
+                      </button>
+                      <span className={`flex-1 text-sm ${s.status === "done" ? "line-through text-app-muted" : "text-app"}`}>{s.title}</span>
+                      <button onClick={() => removeSub(s.id)}
+                        className="opacity-0 group-hover:opacity-100 text-app-muted hover:text-danger transition-opacity">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex items-center gap-2 mt-2 px-3 py-2">
+                  <Plus className="h-4 w-4 text-app-muted" />
+                  <input value={newSub} onChange={(e) => setNewSub(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addSub()}
+                    placeholder="Add subtask"
+                    className="flex-1 bg-transparent outline-none text-sm text-app placeholder:text-app-muted" />
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT */}
+            <div className="space-y-5">
+              {/* Priority */}
+              <div>
+                <div className="text-xs font-medium text-app-muted uppercase tracking-wider mb-2">{t("priority") || "Priority"}</div>
+                <Segmented
+                  options={PRIORITIES.map((p) => ({ value: p, label: p }))}
+                  value={edited.priority}
+                  onChange={(v) => setEdited({ ...edited, priority: v })}
                 />
               </div>
-            )}
+
+              {/* Status */}
+              <div>
+                <div className="text-xs font-medium text-app-muted uppercase tracking-wider mb-2">Status</div>
+                <Segmented
+                  options={TASK_STATUSES.map((s) => ({ value: s, label: TASK_STATUS_LABEL[s].en }))}
+                  value={edited.status}
+                  onChange={(v) => setEdited({ ...edited, status: v })}
+                />
+              </div>
+
+              {/* Schedule */}
+              <div className="rounded-2xl bg-app-card border border-app p-4 space-y-3">
+                <div className="text-xs font-medium text-app-muted uppercase tracking-wider">Schedule</div>
+                <label className="block">
+                  <span className="text-[10px] text-app-muted">Date</span>
+                  <input type="date" value={edited.due_date?.slice(0, 10) ?? ""}
+                    onChange={(e) => setEdited({ ...edited, due_date: e.target.value || null })}
+                    className="w-full mt-1 h-9 px-3 rounded-lg bg-app-secondary border border-app focus:border-accent outline-none text-sm text-app" />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] text-app-muted">Time</span>
+                  <input type="time"
+                    value={edited.scheduled_at ? new Date(edited.scheduled_at).toISOString().slice(11, 16) : ""}
+                    onChange={(e) => {
+                      const d = edited.due_date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
+                      setEdited({ ...edited, scheduled_at: e.target.value ? `${d}T${e.target.value}:00` : null });
+                    }}
+                    className="w-full mt-1 h-9 px-3 rounded-lg bg-app-secondary border border-app focus:border-accent outline-none text-sm text-app" />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] text-app-muted">Duration (min)</span>
+                  <input type="number" min={0} value={edited.estimated_min ?? ""}
+                    onChange={(e) => setEdited({ ...edited, estimated_min: e.target.value ? Number(e.target.value) : null })}
+                    placeholder="30"
+                    className="w-full mt-1 h-9 px-3 rounded-lg bg-app-secondary border border-app focus:border-accent outline-none text-sm text-app" />
+                </label>
+              </div>
+
+              {/* Category */}
+              <label className="block">
+                <span className="text-xs font-medium text-app-muted uppercase tracking-wider">{t("category") || "Category"}</span>
+                <input value={edited.category ?? ""} onChange={(e) => setEdited({ ...edited, category: e.target.value })}
+                  placeholder="Work, Personal..."
+                  className="w-full mt-2 h-10 px-3 rounded-xl bg-app-card border border-app focus:border-accent outline-none text-sm text-app" />
+              </label>
+
+              {/* Pomodoro */}
+              <button onClick={() => setShowPomo((v) => !v)}
+                className="w-full h-10 rounded-xl bg-app-card border border-app text-sm font-medium hover:border-accent flex items-center justify-center gap-2 transition-colors">
+                <Clock className="h-4 w-4" /> {showPomo ? "Hide Pomodoro" : (t("startPomodoro") || "Start Pomodoro")}
+              </button>
+              {showPomo && (
+                <div className="rounded-2xl bg-app-card border border-app p-4">
+                  <Pomodoro
+                    workMin={edited.pomodoro_work ?? 25}
+                    breakMin={edited.pomodoro_break ?? 5}
+                    onComplete={async (mins) => {
+                      if (!user) return;
+                      await supabase.from("pomodoro_sessions").insert({ user_id: user.id, task_id: task.id, duration_min: mins });
+                      await supabase.from("tasks").update({
+                        pomodoro_count: (task.pomodoro_count ?? 0) + 1,
+                        actual_min: (task.actual_min ?? 0) + mins,
+                      }).eq("id", task.id);
+                      onUpdated();
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Sticky footer */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-app bg-app-card">
+          <button onClick={() => onDelete(task.id)}
+            className="h-10 px-4 rounded-xl text-sm font-medium text-danger hover:bg-danger/10 flex items-center gap-2 transition-colors">
+            <Trash2 className="h-4 w-4" /> Delete
+          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={onClose}
+              className="h-10 px-4 rounded-xl text-sm font-medium text-app-muted hover:bg-app-secondary transition-colors">
+              {t("cancel") || "Cancel"}
+            </button>
+            <button onClick={save} disabled={saving}
+              className="h-10 px-5 rounded-xl bg-accent text-white text-sm font-medium hover:opacity-90 accent-glow disabled:opacity-50 transition-opacity">
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ============== Segmented Control ============== */
+function Segmented<T extends string>({
+  options, value, onChange,
+}: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void }) {
+  return (
+    <div className="flex bg-app-secondary rounded-xl p-1 gap-1">
+      {options.map((o) => (
+        <button key={o.value} onClick={() => onChange(o.value)}
+          className={`flex-1 h-8 px-2 rounded-lg text-xs font-medium capitalize transition-all ${
+            value === o.value ? "bg-app-card text-app shadow-sm" : "text-app-muted hover:text-app"
+          }`}>
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }
