@@ -1,10 +1,10 @@
 project_id = "jfqklbuzmohmwpxvcarb"
 
 [functions.ai-chat]
-verify_jwt = true
+verify_jwt = false
 
 [functions.ai-quote]
-verify_jwt = true
+verify_jwt = false
 
 [functions.ai-subtasks]
-verify_jwt = true
+verify_jwt = false
