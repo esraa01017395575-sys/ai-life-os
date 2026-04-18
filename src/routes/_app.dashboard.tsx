@@ -125,7 +125,7 @@ function Dashboard() {
                   <Plus className="h-4 w-4" /> {t("newTask") || "New Task"}
                 </Link>
                 <Link to="/chat" className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-white/15 backdrop-blur border border-white/30 text-white font-semibold hover:bg-white/25 transition-all">
-                  <Sparkles className="h-4 w-4" /> {t("askAI") || "Ask AI"}
+                  <Sparkles className="h-4 w-4" /> Ask AI
                 </Link>
               </div>
             </div>
