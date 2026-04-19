@@ -23,7 +23,7 @@ interface Task {
   pomodoro_work: number | null; pomodoro_break: number | null; xp_reward: number;
   pomodoro_count?: number; actual_min?: number;
 }
-interface Subtask { id: string; title: string; status: string; order_index: number }
+interface Subtask { id: string; title: string; status: string; order_index: number; task_id?: string }
 
 const STATUS_ACCENT: Record<string, { dot: string; bar: string; bg: string; label: string }> = {
   draft:  { dot: "bg-app-muted",  bar: "var(--text-muted)",     bg: "bg-app-secondary/40", label: "text-app-muted" },
