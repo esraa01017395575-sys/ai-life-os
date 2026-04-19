@@ -4,6 +4,7 @@ import { Sparkles, ListTodo, Repeat2, Flame, Trophy, Plus, ArrowRight, Target, Z
 import { useAuth } from "@/contexts/AuthContext";
 import { usePrefs } from "@/contexts/PrefsContext";
 import { supabase } from "@/integrations/supabase/client";
+import heroCharacter from "@/assets/hero-character.png";
 
 export const Route = createFileRoute("/_app/dashboard")({ component: Dashboard });
 
@@ -94,43 +95,48 @@ function Dashboard() {
   const dayNum = today_d.getDate();
 
   return (
-    <div className="relative p-6 max-w-7xl mx-auto space-y-6 overflow-hidden">
-      {/* Decorative blobs */}
-      <div className="blob bg-accent-3 w-72 h-72 -top-20 -right-20 animate-blob" />
-      <div className="blob bg-accent-4 w-80 h-80 top-40 -left-32 animate-blob" style={{ animationDelay: "4s" }} />
-      <div className="blob bg-accent-2 w-64 h-64 bottom-20 right-1/3 animate-blob" style={{ animationDelay: "8s" }} />
-
-      {/* HERO */}
+    <div className="relative p-6 max-w-7xl mx-auto space-y-6">
+      {/* HERO — calm card with character illustration */}
       <section className="relative animate-fade-in-up">
-        <div className="relative overflow-hidden rounded-3xl gradient-hero animate-gradient p-8 md:p-10 text-white shadow-elevated">
-          <div className="absolute inset-0 opacity-20" style={{
-            backgroundImage: "radial-gradient(circle at 20% 30%, white 1px, transparent 1px), radial-gradient(circle at 70% 60%, white 1px, transparent 1px)",
-            backgroundSize: "40px 40px, 60px 60px",
-          }} />
-          <div className="relative grid md:grid-cols-[1fr_auto] gap-6 items-center">
-            <div>
-              <div className="flex items-center gap-2 mb-3 text-sm opacity-90">
-                <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur font-medium">{dayName} · {dayNum}</span>
-                <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur font-mono">L{level} · {xp} XP</span>
+        <div className="relative overflow-hidden rounded-3xl gradient-hero border border-app shadow-soft p-6 md:p-10">
+          <div className="grid md:grid-cols-[1.2fr_auto_1fr] gap-6 items-center">
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-4 text-xs">
+                <span className="px-3 py-1 rounded-full bg-app-card border border-app text-app-muted font-medium">{dayName} · {dayNum}</span>
+                <span className="px-3 py-1 rounded-full bg-app-card border border-app font-mono text-accent">L{level} · {xp} XP</span>
               </div>
-              <h1 className="text-3xl md:text-5xl font-display font-bold leading-tight">
+              <h1 className="text-3xl md:text-5xl font-display font-bold leading-tight text-app">
                 {greet(t)},<br/>
-                <span className="inline-block animate-float">{name || "friend"} 👋</span>
+                <span className="text-gradient">{name || "friend"}</span>
               </h1>
-              <p className="mt-3 text-white/85 text-lg max-w-lg">
+              <p className="mt-3 text-app-muted text-base max-w-md leading-relaxed">
                 {quoteLoading ? "Loading inspiration..." : (quote ?? "Let's make today count.")}
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
-                <Link to="/tasks" className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-white text-accent font-semibold hover-lift shadow-glow">
+                <Link to="/tasks" className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-accent text-white font-semibold hover-lift shadow-soft">
                   <Plus className="h-4 w-4" /> {t("newTask") || "New Task"}
                 </Link>
-                <Link to="/chat" className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-white/15 backdrop-blur border border-white/30 text-white font-semibold hover:bg-white/25 transition-all">
-                  <Sparkles className="h-4 w-4" /> Ask AI
+                <Link to="/chat" className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-app-card border border-app text-app font-semibold hover:border-accent transition-all">
+                  <Sparkles className="h-4 w-4 text-accent" /> Ask AI
                 </Link>
               </div>
             </div>
+
+            {/* Character illustration */}
+            <div className="hidden md:flex items-end justify-center">
+              <img
+                src={heroCharacter}
+                alt="Character"
+                width={260}
+                height={260}
+                className="h-[220px] w-auto animate-float drop-shadow-md"
+              />
+            </div>
+
             {/* Progress Ring */}
-            <ProgressRing value={habitProgress} done={habitsDoneToday} total={habits.length} />
+            <div className="flex justify-center md:justify-end">
+              <ProgressRing value={habitProgress} done={habitsDoneToday} total={habits.length} />
+            </div>
           </div>
         </div>
       </section>
@@ -217,24 +223,24 @@ function Dashboard() {
 }
 
 function ProgressRing({ value, done, total }: { value: number; done: number; total: number }) {
-  const r = 56;
+  const r = 52;
   const c = 2 * Math.PI * r;
   const offset = c - (value / 100) * c;
   return (
-    <div className="relative h-40 w-40 shrink-0">
+    <div className="relative h-36 w-36 shrink-0">
       <svg className="h-full w-full -rotate-90" viewBox="0 0 140 140">
-        <circle cx="70" cy="70" r={r} stroke="rgba(255,255,255,0.2)" strokeWidth="10" fill="none" />
+        <circle cx="70" cy="70" r={r} stroke="var(--border-strong)" strokeWidth="8" fill="none" />
         <circle
-          cx="70" cy="70" r={r} stroke="white" strokeWidth="10" fill="none"
+          cx="70" cy="70" r={r} stroke="var(--accent)" strokeWidth="8" fill="none"
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={offset}
           style={{ transition: "stroke-dashoffset 1s ease-out" }}
         />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-        <div className="text-3xl font-display font-bold">{value}%</div>
-        <div className="text-xs opacity-85">{done}/{total} habits</div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <div className="text-2xl font-display font-bold text-app">{value}%</div>
+        <div className="text-[11px] text-app-muted">{done}/{total} habits</div>
       </div>
     </div>
   );
