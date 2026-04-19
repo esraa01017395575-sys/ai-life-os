@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Plus, X, Sparkles, Calendar as CalIcon, KanbanSquare, Search,
-  Play, Check, MoreHorizontal, Clock, Pencil, Trash2, Focus,
+  Play, Check, MoreHorizontal, Clock, Pencil, Trash2, Focus, Star, HelpCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePrefs } from "@/contexts/PrefsContext";
