@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Plus, X, Sparkles, Calendar as CalIcon, KanbanSquare, Search,
-  Play, Check, MoreHorizontal, Clock, Pencil, Trash2, Focus,
+  Play, Check, MoreHorizontal, Clock, Pencil, Trash2, Focus, Star, HelpCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePrefs } from "@/contexts/PrefsContext";
@@ -23,7 +23,7 @@ interface Task {
   pomodoro_work: number | null; pomodoro_break: number | null; xp_reward: number;
   pomodoro_count?: number; actual_min?: number;
 }
-interface Subtask { id: string; title: string; status: string; order_index: number }
+interface Subtask { id: string; title: string; status: string; order_index: number; task_id?: string }
 
 const STATUS_ACCENT: Record<string, { dot: string; bar: string; bg: string; label: string }> = {
   draft:  { dot: "bg-app-muted",  bar: "var(--text-muted)",     bg: "bg-app-secondary/40", label: "text-app-muted" },
@@ -38,20 +38,35 @@ function TasksPage() {
   const { view } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [subsByTask, setSubsByTask] = useState<Record<string, Subtask[]>>({});
   const [active, setActive] = useState<Task | null>(null);
+  const [pomoTask, setPomoTask] = useState<Task | null>(null);
   const [creatingIn, setCreatingIn] = useState<TaskStatus | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [search, setSearch] = useState("");
   const [focusMode, setFocusMode] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [aiBusy, setAiBusy] = useState<string | null>(null);
 
   useEffect(() => { void load(); }, [user]);
 
   async function load() {
     if (!user) return;
     const { data } = await supabase.from("tasks").select("*").eq("user_id", user.id).order("order_index");
-    setTasks((data ?? []) as Task[]);
+    const list = (data ?? []) as Task[];
+    setTasks(list);
+    const ids = list.map((x) => x.id);
+    if (ids.length) {
+      const { data: subs } = await supabase.from("subtasks").select("id,title,status,order_index,task_id").in("task_id", ids).order("order_index");
+      const map: Record<string, Subtask[]> = {};
+      (subs ?? []).forEach((s: any) => {
+        (map[s.task_id] = map[s.task_id] || []).push(s as Subtask);
+      });
+      setSubsByTask(map);
+    } else {
+      setSubsByTask({});
+    }
   }
 
   async function createTask(status: TaskStatus) {
@@ -82,6 +97,41 @@ function TasksPage() {
     const { error } = await supabase.from("tasks").delete().eq("id", id);
     if (error) toast.error(error.message);
     else setTasks((ts) => ts.filter((x) => x.id !== id));
+  }
+
+  async function aiAction(task: Task, kind: "review" | "help") {
+    setAiBusy(task.id + ":" + kind);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-subtasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+        body: JSON.stringify({
+          title: task.title,
+          description: kind === "review"
+            ? `Give a single short, motivational optimization tip (max 14 words) for this task. ${task.description ?? ""}`
+            : `Suggest the 3 critical first steps to start this task. ${task.description ?? ""}`,
+        }),
+      });
+      const j = await r.json();
+      const tips: string[] = j.subtasks ?? [];
+      if (tips.length) {
+        toast(kind === "review" ? "AI Tip" : "First steps", { description: tips.join(" • ") });
+      } else {
+        toast("AI had no suggestion");
+      }
+    } catch (e: any) {
+      toast.error(e.message ?? "AI request failed");
+    } finally {
+      setAiBusy(null);
+    }
+  }
+
+  async function startPomodoro(task: Task) {
+    if (task.status === "todo" || task.status === "draft") {
+      await updateStatus(task.id, "doing");
+    }
+    setPomoTask({ ...task, status: "doing" });
   }
 
   const filtered = useMemo(() => {
@@ -174,6 +224,8 @@ function TasksPage() {
                     <TaskCard
                       key={task.id}
                       task={task}
+                      subs={subsByTask[task.id] ?? []}
+                      aiBusy={aiBusy}
                       onOpen={() => setActive(task)}
                       onAdvance={() => {
                         const next: Record<string, TaskStatus> = { draft: "todo", todo: "doing", doing: "done", done: "done" };
@@ -183,13 +235,15 @@ function TasksPage() {
                       onDelete={() => deleteTask(task.id)}
                       onDragStart={() => setDragId(task.id)}
                       onDragEnd={() => { setDragId(null); setDragOver(null); }}
+                      onAi={(k) => aiAction(task, k)}
+                      onPomodoro={() => startPomodoro(task)}
                     />
                   ))}
 
                   {colTasks.length === 0 && creatingIn !== status && (
                     <button onClick={() => { setCreatingIn(status); setNewTitle(""); }}
-                      className="w-full py-8 text-center text-xs text-app-muted hover:text-accent border-2 border-dashed border-app rounded-xl hover:border-accent/40 transition-colors">
-                      <div className="text-2xl mb-1">✨</div>
+                      className="w-full py-10 text-center text-xs text-app-muted hover:text-accent border border-dashed border-app rounded-xl hover:border-accent/40 transition-colors">
+                      <Plus className="h-5 w-5 mx-auto mb-1.5 opacity-60" />
                       No tasks here
                       <div className="text-[10px] mt-0.5 opacity-70">Click to add one</div>
                     </button>
@@ -204,34 +258,42 @@ function TasksPage() {
       )}
 
       {active && <TaskDetail task={active} onClose={() => setActive(null)} onUpdated={() => { void load(); }} onDelete={(id) => { deleteTask(id); setActive(null); }} />}
+      {pomoTask && <PomodoroModal task={pomoTask} onClose={() => { setPomoTask(null); void load(); }} />}
     </div>
   );
 }
 
 /* ============== Task Card ============== */
 function TaskCard({
-  task, onOpen, onAdvance, onMove, onDelete, onDragStart, onDragEnd,
+  task, subs, aiBusy, onOpen, onAdvance, onMove, onDelete, onDragStart, onDragEnd, onAi, onPomodoro,
 }: {
   task: Task;
+  subs: Subtask[];
+  aiBusy: string | null;
   onOpen: () => void;
   onAdvance: () => void;
   onMove: (s: TaskStatus) => void;
   onDelete: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
+  onAi: (k: "review" | "help") => void;
+  onPomodoro: () => void;
 }) {
   const [menu, setMenu] = useState(false);
   const conf = STATUS_ACCENT[task.status] ?? STATUS_ACCENT.todo;
   const isDone = task.status === "done";
   const isDoing = task.status === "doing";
 
-  const ctaLabel = task.status === "doing" ? "Continue" : task.status === "done" ? "Done" : "Start";
-  const CtaIcon = task.status === "done" ? Check : Play;
+  const subDone = subs.filter((s) => s.status === "done").length;
+  const ctaLabel = isDoing ? "Continue" : isDone ? "Done" : "Start Pomodoro";
+  const CtaIcon = isDone ? Check : Play;
 
-  // pseudo progress for doing (based on pomodoro_count vs estimated)
   const progress = isDoing && task.estimated_min
     ? Math.min(100, Math.round(((task.actual_min ?? 0) / task.estimated_min) * 100))
     : 0;
+
+  const reviewBusy = aiBusy === task.id + ":review";
+  const helpBusy = aiBusy === task.id + ":help";
 
   return (
     <div
@@ -239,24 +301,39 @@ function TaskCard({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={onOpen}
-      className={`group relative bg-app-card rounded-xl p-3 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${isDone ? "opacity-60" : ""}`}
-      style={{ borderLeft: `3px solid ${conf.bar}` }}
+      className={`group relative bg-app-card rounded-2xl p-4 cursor-pointer transition-all hover:shadow-elevated hover:-translate-y-0.5 ${isDone ? "opacity-60" : ""} ${isDoing ? "ring-1 ring-accent/30 accent-glow" : ""}`}
+      style={{ borderLeft: `4px solid ${conf.bar}` }}
     >
-      {/* Title */}
-      <div className="flex items-start justify-between gap-2">
-        <div className={`text-sm font-medium leading-snug flex-1 ${isDone ? "line-through text-app-muted" : "text-app"}`}>
-          {task.title}
+      {/* Top row: AI buttons + menu */}
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="flex items-center gap-1 -ml-1.5 opacity-70 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => { e.stopPropagation(); onAi("review"); }}
+            disabled={reviewBusy}
+            title="AI optimization tip"
+            className="h-7 w-7 rounded-lg hover:bg-accent/10 text-app-muted hover:text-accent flex items-center justify-center transition-colors disabled:opacity-50"
+          >
+            <Star className={`h-3.5 w-3.5 ${reviewBusy ? "animate-pulse" : ""}`} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onAi("help"); }}
+            disabled={helpBusy}
+            title="How to do it best?"
+            className="h-7 w-7 rounded-lg hover:bg-accent/10 text-app-muted hover:text-accent flex items-center justify-center transition-colors disabled:opacity-50"
+          >
+            <HelpCircle className={`h-3.5 w-3.5 ${helpBusy ? "animate-pulse" : ""}`} />
+          </button>
         </div>
         <div className="relative shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={(e) => { e.stopPropagation(); setMenu((v) => !v); }}
-            className="h-6 w-6 rounded-lg hover:bg-app-secondary text-app-muted flex items-center justify-center">
+            className="h-7 w-7 rounded-lg hover:bg-app-secondary text-app-muted flex items-center justify-center">
             <MoreHorizontal className="h-3.5 w-3.5" />
           </button>
           {menu && (
             <>
               <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setMenu(false); }} />
               <div onClick={(e) => e.stopPropagation()}
-                className="absolute z-50 ltr:right-0 rtl:left-0 top-7 w-44 bg-app-elevated border border-app rounded-xl shadow-xl p-1 animate-fade-in-up">
+                className="absolute z-50 ltr:right-0 rtl:left-0 top-7 w-44 bg-app-elevated border border-app rounded-xl shadow-elevated p-1 animate-fade-in-up">
                 <button onClick={() => { setMenu(false); onOpen(); }}
                   className="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-app-secondary flex items-center gap-2">
                   <Pencil className="h-3.5 w-3.5" /> Edit
@@ -278,8 +355,13 @@ function TaskCard({
         </div>
       </div>
 
+      {/* Title */}
+      <div className={`text-sm font-semibold leading-snug ${isDone ? "line-through text-app-muted" : "text-app"}`}>
+        {task.title}
+      </div>
+
       {/* Meta row */}
-      {(task.estimated_min || task.due_date || task.priority !== "medium") && (
+      {(task.estimated_min || task.due_date || (task.priority && task.priority !== "medium")) && (
         <div className="flex flex-wrap gap-1.5 mt-2.5">
           {task.priority && task.priority !== "medium" && (
             <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium uppercase tracking-wide ${
@@ -301,22 +383,86 @@ function TaskCard({
         </div>
       )}
 
-      {/* Progress bar (Doing) */}
-      {isDoing && progress > 0 && (
-        <div className="mt-3 h-1 rounded-full bg-app-secondary overflow-hidden">
-          <div className="h-full bg-warning transition-all" style={{ width: `${progress}%` }} />
+      {/* Subtasks preview */}
+      {subs.length > 0 && (
+        <div className="mt-3 space-y-1">
+          {subs.slice(0, 2).map((s) => (
+            <div key={s.id} className="flex items-center gap-2 text-xs">
+              <span className={`h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0 ${
+                s.status === "done" ? "bg-accent border-accent" : "border-app-strong"
+              }`}>
+                {s.status === "done" && <Check className="h-2.5 w-2.5 text-white" />}
+              </span>
+              <span className={`truncate ${s.status === "done" ? "line-through text-app-muted" : "text-app-muted"}`}>{s.title}</span>
+            </div>
+          ))}
+          {subs.length > 2 && (
+            <div className="text-[10px] text-app-faint pl-5">+{subs.length - 2} more · {subDone}/{subs.length} done</div>
+          )}
         </div>
       )}
 
-      {/* CTA */}
-      {!isDone && (
-        <button onClick={(e) => { e.stopPropagation(); onAdvance(); }}
-          className={`mt-3 w-full h-8 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
-            isDoing ? "bg-warning/15 text-warning hover:bg-warning/25" : "bg-accent/10 text-accent hover:bg-accent/20"
-          }`}>
-          <CtaIcon className="h-3.5 w-3.5" /> {ctaLabel}
-        </button>
+      {/* Progress bar (Doing) */}
+      {isDoing && progress > 0 && (
+        <div className="mt-3 h-1 rounded-full bg-app-secondary overflow-hidden">
+          <div className="h-full bg-accent transition-all" style={{ width: `${progress}%` }} />
+        </div>
       )}
+
+      {/* CTAs */}
+      {!isDone && (
+        <div className="flex items-center gap-1.5 mt-3">
+          <button
+            onClick={(e) => { e.stopPropagation(); onPomodoro(); }}
+            className={`flex-1 h-9 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+              isDoing
+                ? "bg-accent text-white shadow-soft hover:opacity-90"
+                : "bg-accent/10 text-accent hover:bg-accent/20"
+            }`}
+          >
+            <CtaIcon className="h-3.5 w-3.5" /> {ctaLabel}
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onAdvance(); }}
+            title={isDoing ? "Mark done" : "Move forward"}
+            className="h-9 w-9 rounded-xl bg-app-secondary text-app-muted hover:text-accent hover:bg-accent/10 flex items-center justify-center transition-colors"
+          >
+            <Check className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============== Pomodoro Modal ============== */
+function PomodoroModal({ task, onClose }: { task: Task; onClose: () => void }) {
+  const { user } = useAuth();
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 animate-fade-in-up" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-md bg-app-card border border-app rounded-2xl p-8 shadow-elevated">
+        <button onClick={onClose}
+          className="absolute top-3 ltr:right-3 rtl:left-3 h-8 w-8 rounded-lg hover:bg-app-secondary text-app-muted hover:text-app flex items-center justify-center">
+          <X className="h-4 w-4" />
+        </button>
+        <div className="text-xs uppercase tracking-wider text-accent font-semibold mb-1">Active Focus</div>
+        <h3 className="font-display font-bold text-xl text-app mb-6 truncate">{task.title}</h3>
+        <Pomodoro
+          workMin={task.pomodoro_work ?? 25}
+          breakMin={task.pomodoro_break ?? 5}
+          onComplete={async (mins) => {
+            if (!user) return;
+            await supabase.from("pomodoro_sessions").insert({ user_id: user.id, task_id: task.id, duration_min: mins });
+            await supabase.from("tasks").update({
+              pomodoro_count: (task.pomodoro_count ?? 0) + 1,
+              actual_min: (task.actual_min ?? 0) + mins,
+            }).eq("id", task.id);
+            toast.success(`+${mins}m logged`);
+          }}
+        />
+      </div>
     </div>
   );
 }

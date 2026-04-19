@@ -4,12 +4,12 @@ import { usePrefs } from "@/contexts/PrefsContext";
 import { cn } from "@/lib/utils";
 
 const items = [
-  { to: "/dashboard", icon: LayoutDashboard, key: "dashboard" as const, emoji: "🏡", color: "var(--accent)" },
-  { to: "/chat",      icon: MessageSquare,   key: "chat" as const,      emoji: "💬", color: "var(--accent-4)" },
-  { to: "/plans",     icon: Target,          key: "plans" as const,     emoji: "🎯", color: "var(--accent-3)" },
-  { to: "/tasks",     icon: ListTodo,        key: "tasks" as const,     emoji: "✅", color: "var(--accent-5)" },
-  { to: "/habits",    icon: Repeat2,         key: "habits" as const,    emoji: "🔥", color: "var(--accent-2)" },
-  { to: "/notes",     icon: StickyNote,      key: "notes" as const,     emoji: "📝", color: "var(--accent-3)" },
+  { to: "/dashboard", icon: LayoutDashboard, key: "dashboard" as const, color: "var(--accent)" },
+  { to: "/chat",      icon: MessageSquare,   key: "chat" as const,      color: "var(--accent)" },
+  { to: "/plans",     icon: Target,          key: "plans" as const,     color: "var(--accent)" },
+  { to: "/tasks",     icon: ListTodo,        key: "tasks" as const,     color: "var(--accent)" },
+  { to: "/habits",    icon: Repeat2,         key: "habits" as const,    color: "var(--accent)" },
+  { to: "/notes",     icon: StickyNote,      key: "notes" as const,     color: "var(--accent)" },
 ];
 
 export function Sidebar() {
@@ -32,7 +32,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-2 py-2 space-y-1.5">
-        {items.map(({ to, icon: Icon, key, emoji, color }) => {
+        {items.map(({ to, icon: Icon, key, color }) => {
           const active = loc.pathname.startsWith(to);
           return (
             <Link
@@ -61,8 +61,7 @@ export function Sidebar() {
               >
                 <Icon className="h-4.5 w-4.5" />
               </span>
-              <span className="opacity-0 group-hover/sidebar:opacity-100 transition-opacity flex-1">{t(key)}</span>
-              <span className="opacity-0 group-hover/sidebar:opacity-100 transition-opacity text-base">{emoji}</span>
+              <span className="opacity-0 group-hover/sidebar:opacity-100 transition-opacity flex-1 font-medium">{t(key)}</span>
             </Link>
           );
         })}
