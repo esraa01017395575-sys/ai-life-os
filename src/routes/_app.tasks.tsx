@@ -99,6 +99,41 @@ function TasksPage() {
     else setTasks((ts) => ts.filter((x) => x.id !== id));
   }
 
+  async function aiAction(task: Task, kind: "review" | "help") {
+    setAiBusy(task.id + ":" + kind);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-subtasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+        body: JSON.stringify({
+          title: task.title,
+          description: kind === "review"
+            ? `Give a single short, motivational optimization tip (max 14 words) for this task. ${task.description ?? ""}`
+            : `Suggest the 3 critical first steps to start this task. ${task.description ?? ""}`,
+        }),
+      });
+      const j = await r.json();
+      const tips: string[] = j.subtasks ?? [];
+      if (tips.length) {
+        toast(kind === "review" ? "AI Tip" : "First steps", { description: tips.join(" • ") });
+      } else {
+        toast("AI had no suggestion");
+      }
+    } catch (e: any) {
+      toast.error(e.message ?? "AI request failed");
+    } finally {
+      setAiBusy(null);
+    }
+  }
+
+  async function startPomodoro(task: Task) {
+    if (task.status === "todo" || task.status === "draft") {
+      await updateStatus(task.id, "doing");
+    }
+    setPomoTask({ ...task, status: "doing" });
+  }
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return q ? tasks.filter((t) => t.title.toLowerCase().includes(q)) : tasks;
