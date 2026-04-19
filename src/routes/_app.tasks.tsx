@@ -38,20 +38,35 @@ function TasksPage() {
   const { view } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [subsByTask, setSubsByTask] = useState<Record<string, Subtask[]>>({});
   const [active, setActive] = useState<Task | null>(null);
+  const [pomoTask, setPomoTask] = useState<Task | null>(null);
   const [creatingIn, setCreatingIn] = useState<TaskStatus | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [search, setSearch] = useState("");
   const [focusMode, setFocusMode] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [aiBusy, setAiBusy] = useState<string | null>(null);
 
   useEffect(() => { void load(); }, [user]);
 
   async function load() {
     if (!user) return;
     const { data } = await supabase.from("tasks").select("*").eq("user_id", user.id).order("order_index");
-    setTasks((data ?? []) as Task[]);
+    const list = (data ?? []) as Task[];
+    setTasks(list);
+    const ids = list.map((x) => x.id);
+    if (ids.length) {
+      const { data: subs } = await supabase.from("subtasks").select("id,title,status,order_index,task_id").in("task_id", ids).order("order_index");
+      const map: Record<string, Subtask[]> = {};
+      (subs ?? []).forEach((s: any) => {
+        (map[s.task_id] = map[s.task_id] || []).push(s as Subtask);
+      });
+      setSubsByTask(map);
+    } else {
+      setSubsByTask({});
+    }
   }
 
   async function createTask(status: TaskStatus) {
