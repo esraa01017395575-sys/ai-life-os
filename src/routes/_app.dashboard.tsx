@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sparkles, ListTodo, Repeat2, Flame, Trophy, Plus, ArrowRight, Target, Zap } from "lucide-react";
+import { Sparkles, Plus, ArrowRight, Flame } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePrefs } from "@/contexts/PrefsContext";
 import { supabase } from "@/integrations/supabase/client";
 import heroCharacter from "@/assets/hero-character.png";
+import illuPlant from "@/assets/illu-plant.png";
+import illuTasks from "@/assets/illu-tasks.png";
 
 export const Route = createFileRoute("/_app/dashboard")({ component: Dashboard });
 
@@ -96,23 +98,27 @@ function Dashboard() {
 
   return (
     <div className="relative p-6 max-w-7xl mx-auto space-y-6">
-      {/* HERO — calm card with character illustration */}
+      {/* HERO — large character, no ring inside */}
       <section className="relative animate-fade-in-up">
-        <div className="relative overflow-hidden rounded-3xl gradient-hero border border-app shadow-soft p-6 md:p-10">
-          <div className="grid md:grid-cols-[1.2fr_auto_1fr] gap-6 items-center">
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-4 text-xs">
-                <span className="px-3 py-1 rounded-full bg-app-card border border-app text-app-muted font-medium">{dayName} · {dayNum}</span>
-                <span className="px-3 py-1 rounded-full bg-app-card border border-app font-mono text-accent">L{level} · {xp} XP</span>
+        <div className="relative overflow-hidden rounded-3xl gradient-hero border border-app shadow-soft">
+          <div className="grid md:grid-cols-[1.1fr_1fr] gap-4 items-end">
+            <div className="relative z-10 p-8 md:p-12">
+              <div className="flex items-center gap-2 mb-5 text-xs">
+                <span className="px-3 py-1 rounded-full bg-app-card border border-app text-app-muted font-medium">
+                  {dayName} · {dayNum}
+                </span>
+                <span className="px-3 py-1 rounded-full bg-app-card border border-app font-mono text-accent">
+                  L{level} · {xp} XP
+                </span>
               </div>
-              <h1 className="text-3xl md:text-5xl font-display font-bold leading-tight text-app">
-                {greet(t)},<br/>
+              <h1 className="text-4xl md:text-6xl font-display font-bold leading-[1.05] text-app">
+                {greet(t)},<br />
                 <span className="text-gradient">{name || "friend"}</span>
               </h1>
-              <p className="mt-3 text-app-muted text-base max-w-md leading-relaxed">
+              <p className="mt-4 text-app-muted text-base md:text-lg max-w-md leading-relaxed">
                 {quoteLoading ? "Loading inspiration..." : (quote ?? "Let's make today count.")}
               </p>
-              <div className="mt-5 flex flex-wrap gap-3">
+              <div className="mt-6 flex flex-wrap gap-3">
                 <Link to="/tasks" className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-accent text-white font-semibold hover-lift shadow-soft">
                   <Plus className="h-4 w-4" /> {t("newTask") || "New Task"}
                 </Link>
@@ -122,57 +128,47 @@ function Dashboard() {
               </div>
             </div>
 
-            {/* Character illustration */}
-            <div className="hidden md:flex items-end justify-center">
+            {/* Big character */}
+            <div className="flex items-end justify-center md:justify-end pr-4 md:pr-8">
               <img
                 src={heroCharacter}
-                alt="Character"
-                width={260}
-                height={260}
-                className="h-[220px] w-auto animate-float drop-shadow-md"
+                alt=""
+                width={520}
+                height={520}
+                className="h-[280px] md:h-[400px] w-auto animate-float"
               />
-            </div>
-
-            {/* Progress Ring */}
-            <div className="flex justify-center md:justify-end">
-              <ProgressRing value={habitProgress} done={habitsDoneToday} total={habits.length} />
             </div>
           </div>
         </div>
       </section>
 
-      {/* STAT TILES */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-4 relative">
-        <StatTile icon={Trophy} label={t("level")} value={`L${level}`} color="var(--accent-2)" emoji="🏆" />
-        <StatTile icon={Zap} label={t("xp")} value={xp.toString()} color="var(--accent-4)" emoji="⚡" />
-        <StatTile icon={Flame} label={t("streak")} value={longestStreak.toString()} color="var(--accent-3)" emoji="🔥" />
-        <StatTile icon={Target} label={t("doneToday")} value={`${habitsDoneToday}/${habits.length}`} color="var(--accent-5)" emoji="🎯" />
+      {/* STAT TILES + PROGRESS RING */}
+      <section className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-4">
+        <StatTile label={t("level")} value={`L${level}`} hint="keep going" />
+        <StatTile label={t("xp")} value={xp.toLocaleString()} hint="experience" />
+        <StatTile label={t("streak")} value={longestStreak.toString()} hint="days in a row" accent />
+        <ProgressCard value={habitProgress} done={habitsDoneToday} total={habits.length} label={t("doneToday")} />
       </section>
 
       {/* TASKS + HABITS */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-5 relative">
-        <PanelCard
-          title={t("yourTasksToday")}
-          icon={ListTodo}
-          color="var(--accent-5)"
-          link="/tasks"
-        >
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <PanelCard title={t("yourTasksToday")} link="/tasks">
           {tasks.length === 0 ? (
-            <EmptyState emoji="🎉" text={t("noTasks") || "All clear! Add a new task."} />
+            <EmptyState illu={illuTasks} text={t("noTasks") || "All clear! Add a new task."} />
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-1">
               {tasks.map((task, i) => (
                 <li
                   key={task.id}
-                  className="group flex items-center gap-3 p-3 rounded-xl hover:bg-app-elevated transition-all animate-fade-in-up"
-                  style={{ animationDelay: `${i * 50}ms` }}
+                  className="group flex items-center gap-3 p-3 rounded-xl hover:bg-app-secondary transition-all animate-fade-in-up"
+                  style={{ animationDelay: `${i * 40}ms` }}
                 >
                   <button
                     onClick={() => completeTask(task.id)}
-                    className="h-6 w-6 rounded-full border-2 border-app-strong hover:border-accent hover:bg-accent/10 shrink-0 transition-all"
+                    className="h-5 w-5 rounded-md border-2 border-app-strong hover:border-accent hover:bg-accent/10 shrink-0 transition-all"
                     aria-label="Complete"
                   />
-                  <span className="flex-1 text-sm truncate font-medium">{task.title}</span>
+                  <span className="flex-1 text-sm truncate">{task.title}</span>
                   <PriorityBadge priority={task.priority} />
                 </li>
               ))}
@@ -180,35 +176,33 @@ function Dashboard() {
           )}
         </PanelCard>
 
-        <PanelCard
-          title={t("habitsToday")}
-          icon={Repeat2}
-          color="var(--accent-2)"
-          link="/habits"
-        >
+        <PanelCard title={t("habitsToday")} link="/habits">
           {habits.length === 0 ? (
-            <EmptyState emoji="🌱" text={t("noHabits") || "Plant your first habit"} />
+            <EmptyState illu={illuPlant} text={t("noHabits") || "Plant your first habit"} />
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-1">
               {habits.map((habit, i) => {
                 const done = habit.last_completed_on === today;
                 return (
                   <li
                     key={habit.id}
-                    className="group flex items-center gap-3 p-3 rounded-xl hover:bg-app-elevated transition-all animate-fade-in-up"
-                    style={{ animationDelay: `${i * 50}ms` }}
+                    className="group flex items-center gap-3 p-3 rounded-xl hover:bg-app-secondary transition-all animate-fade-in-up"
+                    style={{ animationDelay: `${i * 40}ms` }}
                   >
                     <button
                       onClick={() => !done && completeHabit(habit.id)}
                       disabled={done}
-                      className={`h-10 w-10 rounded-xl flex items-center justify-center text-xl shrink-0 transition-all hover-pop ${
-                        done ? "gradient-warm text-white shadow-glow" : "bg-app-elevated hover:bg-accent-2/20"
+                      aria-label={done ? "Done today" : "Mark done"}
+                      className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+                        done
+                          ? "bg-accent text-white"
+                          : "bg-app-secondary border border-app hover:border-accent"
                       }`}
                     >
-                      {habit.emoji}
+                      <span className="text-base">{habit.emoji}</span>
                     </button>
-                    <span className="flex-1 text-sm truncate font-medium">{habit.title}</span>
-                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent-3/10 text-accent-3 text-xs font-mono font-bold">
+                    <span className="flex-1 text-sm truncate">{habit.title}</span>
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-app-secondary text-app-muted text-xs font-mono">
                       <Flame className="h-3 w-3" />{habit.streak}
                     </span>
                   </li>
@@ -222,66 +216,55 @@ function Dashboard() {
   );
 }
 
-function ProgressRing({ value, done, total }: { value: number; done: number; total: number }) {
-  const r = 52;
+function ProgressCard({ value, done, total, label }: { value: number; done: number; total: number; label: string }) {
+  const r = 42;
   const c = 2 * Math.PI * r;
   const offset = c - (value / 100) * c;
   return (
-    <div className="relative h-36 w-36 shrink-0">
-      <svg className="h-full w-full -rotate-90" viewBox="0 0 140 140">
-        <circle cx="70" cy="70" r={r} stroke="var(--border-strong)" strokeWidth="8" fill="none" />
-        <circle
-          cx="70" cy="70" r={r} stroke="var(--accent)" strokeWidth="8" fill="none"
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={offset}
-          style={{ transition: "stroke-dashoffset 1s ease-out" }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <div className="text-2xl font-display font-bold text-app">{value}%</div>
-        <div className="text-[11px] text-app-muted">{done}/{total} habits</div>
+    <div className="glass-card p-4 flex items-center gap-4 min-w-[200px]">
+      <div className="relative h-[88px] w-[88px] shrink-0">
+        <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r={r} stroke="var(--border-strong)" strokeWidth="6" fill="none" />
+          <circle
+            cx="50" cy="50" r={r} stroke="var(--accent)" strokeWidth="6" fill="none"
+            strokeLinecap="round"
+            strokeDasharray={c}
+            strokeDashoffset={offset}
+            style={{ transition: "stroke-dashoffset 1s ease-out" }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-lg font-display font-bold text-app">{value}%</div>
+        </div>
+      </div>
+      <div>
+        <div className="text-xs uppercase tracking-wider text-app-muted font-medium">{label}</div>
+        <div className="text-2xl font-display font-bold text-app">{done}/{total}</div>
       </div>
     </div>
   );
 }
 
-function StatTile({ icon: Icon, label, value, color, emoji }: any) {
-  return (
-    <div
-      className="relative overflow-hidden glass-card p-5 hover-lift cursor-default group"
-      style={{ borderTop: `3px solid ${color}` }}
-    >
-      <div className="absolute -top-4 -right-4 text-5xl opacity-10 group-hover:opacity-30 group-hover:scale-110 transition-all duration-500">
-        {emoji}
-      </div>
-      <div className="flex items-center gap-2 text-app-muted text-xs uppercase tracking-wider mb-2 font-semibold">
-        <Icon className="h-4 w-4" style={{ color }} />{label}
-      </div>
-      <div className="font-display font-bold text-3xl text-app">{value}</div>
-    </div>
-  );
-}
-
-function PanelCard({ title, icon: Icon, color, link, children }: any) {
+function StatTile({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: boolean }) {
   return (
     <div className="glass-card p-5 hover-lift">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display font-bold text-lg flex items-center gap-2.5">
-          <span
-            className="h-9 w-9 rounded-xl flex items-center justify-center text-white shadow-soft"
-            style={{ background: color }}
-          >
-            <Icon className="h-4.5 w-4.5" />
-          </span>
-          {title}
-        </h2>
+      <div className="text-xs uppercase tracking-wider text-app-muted font-medium mb-2">{label}</div>
+      <div className={`font-display font-bold text-3xl ${accent ? "text-accent" : "text-app"}`}>{value}</div>
+      {hint && <div className="text-xs text-app-faint mt-1">{hint}</div>}
+    </div>
+  );
+}
+
+function PanelCard({ title, link, children }: any) {
+  return (
+    <div className="glass-card p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-display font-bold text-lg text-app">{title}</h2>
         <Link
           to={link}
-          className="text-sm font-medium flex items-center gap-1 hover:gap-2 transition-all"
-          style={{ color }}
+          className="text-xs font-medium flex items-center gap-1 hover:gap-2 text-app-muted hover:text-accent transition-all"
         >
-          All <ArrowRight className="h-3.5 w-3.5" />
+          View all <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
       {children}
@@ -290,23 +273,23 @@ function PanelCard({ title, icon: Icon, color, link, children }: any) {
 }
 
 function PriorityBadge({ priority }: { priority: string }) {
-  const map: Record<string, { bg: string; text: string; label: string }> = {
-    high:   { bg: "bg-accent-3/15",  text: "text-accent-3",  label: "High" },
-    medium: { bg: "bg-accent-2/15",  text: "text-accent-2",  label: "Med" },
-    low:    { bg: "bg-accent-5/15",  text: "text-accent-5",  label: "Low" },
+  const map: Record<string, { cls: string; label: string }> = {
+    high:   { cls: "bg-accent/15 text-accent",       label: "High" },
+    medium: { cls: "bg-app-secondary text-app-muted", label: "Med"  },
+    low:    { cls: "bg-app-secondary text-app-faint", label: "Low"  },
   };
   const v = map[priority] ?? map.low;
   return (
-    <span className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider ${v.bg} ${v.text}`}>
+    <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold uppercase tracking-wider ${v.cls}`}>
       {v.label}
     </span>
   );
 }
 
-function EmptyState({ emoji, text }: { emoji: string; text: string }) {
+function EmptyState({ illu, text }: { illu: string; text: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-10 text-center">
-      <div className="text-5xl mb-3 animate-float">{emoji}</div>
+    <div className="flex flex-col items-center justify-center py-8 text-center">
+      <img src={illu} alt="" width={120} height={120} className="h-24 w-auto mb-3 opacity-90" loading="lazy" />
       <p className="text-app-muted text-sm">{text}</p>
     </div>
   );
