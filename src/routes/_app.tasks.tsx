@@ -224,6 +224,8 @@ function TasksPage() {
                     <TaskCard
                       key={task.id}
                       task={task}
+                      subs={subsByTask[task.id] ?? []}
+                      aiBusy={aiBusy}
                       onOpen={() => setActive(task)}
                       onAdvance={() => {
                         const next: Record<string, TaskStatus> = { draft: "todo", todo: "doing", doing: "done", done: "done" };
@@ -233,13 +235,15 @@ function TasksPage() {
                       onDelete={() => deleteTask(task.id)}
                       onDragStart={() => setDragId(task.id)}
                       onDragEnd={() => { setDragId(null); setDragOver(null); }}
+                      onAi={(k) => aiAction(task, k)}
+                      onPomodoro={() => startPomodoro(task)}
                     />
                   ))}
 
                   {colTasks.length === 0 && creatingIn !== status && (
                     <button onClick={() => { setCreatingIn(status); setNewTitle(""); }}
-                      className="w-full py-8 text-center text-xs text-app-muted hover:text-accent border-2 border-dashed border-app rounded-xl hover:border-accent/40 transition-colors">
-                      <div className="text-2xl mb-1">✨</div>
+                      className="w-full py-10 text-center text-xs text-app-muted hover:text-accent border border-dashed border-app rounded-xl hover:border-accent/40 transition-colors">
+                      <Plus className="h-5 w-5 mx-auto mb-1.5 opacity-60" />
                       No tasks here
                       <div className="text-[10px] mt-0.5 opacity-70">Click to add one</div>
                     </button>
@@ -254,6 +258,7 @@ function TasksPage() {
       )}
 
       {active && <TaskDetail task={active} onClose={() => setActive(null)} onUpdated={() => { void load(); }} onDelete={(id) => { deleteTask(id); setActive(null); }} />}
+      {pomoTask && <PomodoroModal task={pomoTask} onClose={() => { setPomoTask(null); void load(); }} />}
     </div>
   );
 }
