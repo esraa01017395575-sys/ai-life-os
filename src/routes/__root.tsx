@@ -3,6 +3,8 @@ import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { PrefsProvider } from "@/contexts/PrefsContext";
+import { PomodoroProvider } from "@/contexts/PomodoroContext";
+import { PomodoroFloating } from "@/components/PomodoroFloating";
 
 function NotFoundComponent() {
   return (
@@ -53,8 +55,11 @@ function RootComponent() {
   return (
     <AuthProvider>
       <PrefsProvider>
-        <Outlet />
-        <Toaster position="top-right" theme="dark" richColors />
+        <PomodoroProvider>
+          <Outlet />
+          <PomodoroFloating />
+          <Toaster position="top-right" theme="dark" richColors />
+        </PomodoroProvider>
       </PrefsProvider>
     </AuthProvider>
   );

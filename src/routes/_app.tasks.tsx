@@ -8,7 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePrefs } from "@/contexts/PrefsContext";
 import { supabase } from "@/integrations/supabase/client";
 import { TASK_STATUSES, TASK_STATUS_LABEL, PRIORITIES, type TaskStatus } from "@/lib/constants";
-import { Pomodoro } from "@/components/Pomodoro";
+import { PomodoroInline } from "@/components/PomodoroInline";
+import { usePomodoro } from "@/contexts/PomodoroContext";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/tasks")({
@@ -40,7 +41,8 @@ function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [subsByTask, setSubsByTask] = useState<Record<string, Subtask[]>>({});
   const [active, setActive] = useState<Task | null>(null);
-  const [pomoTask, setPomoTask] = useState<Task | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const pomo = usePomodoro();
   const [creatingIn, setCreatingIn] = useState<TaskStatus | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [search, setSearch] = useState("");
@@ -131,7 +133,7 @@ function TasksPage() {
     if (task.status === "todo" || task.status === "draft") {
       await updateStatus(task.id, "doing");
     }
-    setPomoTask({ ...task, status: "doing" });
+    setExpandedId((id) => id === task.id ? null : task.id);
   }
 
   const filtered = useMemo(() => {
@@ -226,6 +228,8 @@ function TasksPage() {
                       task={task}
                       subs={subsByTask[task.id] ?? []}
                       aiBusy={aiBusy}
+                      expanded={expandedId === task.id}
+                      pomoActive={pomo.task?.id === task.id}
                       onOpen={() => setActive(task)}
                       onAdvance={() => {
                         const next: Record<string, TaskStatus> = { draft: "todo", todo: "doing", doing: "done", done: "done" };
@@ -258,18 +262,19 @@ function TasksPage() {
       )}
 
       {active && <TaskDetail task={active} onClose={() => setActive(null)} onUpdated={() => { void load(); }} onDelete={(id) => { deleteTask(id); setActive(null); }} />}
-      {pomoTask && <PomodoroModal task={pomoTask} onClose={() => { setPomoTask(null); void load(); }} />}
     </div>
   );
 }
 
 /* ============== Task Card ============== */
 function TaskCard({
-  task, subs, aiBusy, onOpen, onAdvance, onMove, onDelete, onDragStart, onDragEnd, onAi, onPomodoro,
+  task, subs, aiBusy, expanded, pomoActive, onOpen, onAdvance, onMove, onDelete, onDragStart, onDragEnd, onAi, onPomodoro,
 }: {
   task: Task;
   subs: Subtask[];
   aiBusy: string | null;
+  expanded: boolean;
+  pomoActive: boolean;
   onOpen: () => void;
   onAdvance: () => void;
   onMove: (s: TaskStatus) => void;
@@ -415,12 +420,12 @@ function TaskCard({
           <button
             onClick={(e) => { e.stopPropagation(); onPomodoro(); }}
             className={`flex-1 h-9 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-              isDoing
+              isDoing || expanded || pomoActive
                 ? "bg-accent text-white shadow-soft hover:opacity-90"
                 : "bg-accent/10 text-accent hover:bg-accent/20"
             }`}
           >
-            <CtaIcon className="h-3.5 w-3.5" /> {ctaLabel}
+            <CtaIcon className="h-3.5 w-3.5" /> {expanded ? "Hide timer" : ctaLabel}
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onAdvance(); }}
@@ -431,41 +436,19 @@ function TaskCard({
           </button>
         </div>
       )}
+
+      {/* Inline Pomodoro */}
+      {(expanded || pomoActive) && (
+        <PomodoroInline task={{
+          id: task.id, title: task.title,
+          workMin: task.pomodoro_work ?? 25, breakMin: task.pomodoro_break ?? 5,
+        }} />
+      )}
     </div>
   );
 }
 
-/* ============== Pomodoro Modal ============== */
-function PomodoroModal({ task, onClose }: { task: Task; onClose: () => void }) {
-  const { user } = useAuth();
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 animate-fade-in-up" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-md bg-app-card border border-app rounded-2xl p-8 shadow-elevated">
-        <button onClick={onClose}
-          className="absolute top-3 ltr:right-3 rtl:left-3 h-8 w-8 rounded-lg hover:bg-app-secondary text-app-muted hover:text-app flex items-center justify-center">
-          <X className="h-4 w-4" />
-        </button>
-        <div className="text-xs uppercase tracking-wider text-accent font-semibold mb-1">Active Focus</div>
-        <h3 className="font-display font-bold text-xl text-app mb-6 truncate">{task.title}</h3>
-        <Pomodoro
-          workMin={task.pomodoro_work ?? 25}
-          breakMin={task.pomodoro_break ?? 5}
-          onComplete={async (mins) => {
-            if (!user) return;
-            await supabase.from("pomodoro_sessions").insert({ user_id: user.id, task_id: task.id, duration_min: mins });
-            await supabase.from("tasks").update({
-              pomodoro_count: (task.pomodoro_count ?? 0) + 1,
-              actual_min: (task.actual_min ?? 0) + mins,
-            }).eq("id", task.id);
-            toast.success(`+${mins}m logged`);
-          }}
-        />
-      </div>
-    </div>
-  );
-}
+/* ============== (legacy modal removed — uses inline + floating widget) ============== */
 
 /* ============== Calendar ============== */
 function CalendarView({ tasks, onPick }: { tasks: Task[]; onPick: (t: Task) => void }) {
@@ -511,7 +494,7 @@ function TaskDetail({
   const [subs, setSubs] = useState<Subtask[]>([]);
   const [newSub, setNewSub] = useState("");
   const [genLoading, setGenLoading] = useState(false);
-  const [showPomo, setShowPomo] = useState(false);
+  // showPomo removed — pomodoro is now inline on cards + floating widget
   const [edited, setEdited] = useState(task);
   const [saving, setSaving] = useState(false);
 
@@ -722,28 +705,7 @@ function TaskDetail({
                   className="w-full mt-2 h-10 px-3 rounded-xl bg-app-card border border-app focus:border-accent outline-none text-sm text-app" />
               </label>
 
-              {/* Pomodoro */}
-              <button onClick={() => setShowPomo((v) => !v)}
-                className="w-full h-10 rounded-xl bg-app-card border border-app text-sm font-medium hover:border-accent flex items-center justify-center gap-2 transition-colors">
-                <Clock className="h-4 w-4" /> {showPomo ? "Hide Pomodoro" : (t("startPomodoro") || "Start Pomodoro")}
-              </button>
-              {showPomo && (
-                <div className="rounded-2xl bg-app-card border border-app p-4">
-                  <Pomodoro
-                    workMin={edited.pomodoro_work ?? 25}
-                    breakMin={edited.pomodoro_break ?? 5}
-                    onComplete={async (mins) => {
-                      if (!user) return;
-                      await supabase.from("pomodoro_sessions").insert({ user_id: user.id, task_id: task.id, duration_min: mins });
-                      await supabase.from("tasks").update({
-                        pomodoro_count: (task.pomodoro_count ?? 0) + 1,
-                        actual_min: (task.actual_min ?? 0) + mins,
-                      }).eq("id", task.id);
-                      onUpdated();
-                    }}
-                  />
-                </div>
-              )}
+              {/* Pomodoro moved out of the form — start it from the task card (inline + floating). */}
             </div>
           </div>
         </div>
