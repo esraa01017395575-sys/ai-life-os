@@ -178,6 +178,8 @@ export type Database = {
           frequency: string
           id: string
           last_completed_on: string | null
+          reminder_time: string | null
+          reminders: number[]
           streak: number
           target_per_day: number
           title: string
@@ -194,6 +196,8 @@ export type Database = {
           frequency?: string
           id?: string
           last_completed_on?: string | null
+          reminder_time?: string | null
+          reminders?: number[]
           streak?: number
           target_per_day?: number
           title: string
@@ -210,6 +214,8 @@ export type Database = {
           frequency?: string
           id?: string
           last_completed_on?: string | null
+          reminder_time?: string | null
+          reminders?: number[]
           streak?: number
           target_per_day?: number
           title?: string
@@ -628,6 +634,8 @@ export type Database = {
           frequency: string
           id: string
           last_completed_on: string | null
+          reminder_time: string | null
+          reminders: number[]
           streak: number
           target_per_day: number
           title: string
