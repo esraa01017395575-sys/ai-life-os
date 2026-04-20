@@ -196,7 +196,6 @@ export const translations = {
     deleteHabit: "حذف العادة",
     confirmDelete: "متأكد؟ ده مش هيرجع تاني.",
     addPlan: "خطة جديدة",
-    monthly: "شهري",
     quarterly: "ربع سنوي",
     yearly: "سنوي",
     milestones: "المراحل",
