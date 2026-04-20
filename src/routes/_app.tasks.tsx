@@ -449,9 +449,6 @@ function TaskCard({
 }
 
 /* ============== (legacy modal removed — uses inline + floating widget) ============== */
-    </div>
-  );
-}
 
 /* ============== Calendar ============== */
 function CalendarView({ tasks, onPick }: { tasks: Task[]; onPick: (t: Task) => void }) {
