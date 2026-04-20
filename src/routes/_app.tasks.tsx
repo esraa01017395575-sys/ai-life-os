@@ -41,7 +41,8 @@ function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [subsByTask, setSubsByTask] = useState<Record<string, Subtask[]>>({});
   const [active, setActive] = useState<Task | null>(null);
-  const [pomoTask, setPomoTask] = useState<Task | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const pomo = usePomodoro();
   const [creatingIn, setCreatingIn] = useState<TaskStatus | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [search, setSearch] = useState("");
@@ -132,7 +133,7 @@ function TasksPage() {
     if (task.status === "todo" || task.status === "draft") {
       await updateStatus(task.id, "doing");
     }
-    setPomoTask({ ...task, status: "doing" });
+    setExpandedId((id) => id === task.id ? null : task.id);
   }
 
   const filtered = useMemo(() => {
@@ -227,6 +228,8 @@ function TasksPage() {
                       task={task}
                       subs={subsByTask[task.id] ?? []}
                       aiBusy={aiBusy}
+                      expanded={expandedId === task.id}
+                      pomoActive={pomo.task?.id === task.id}
                       onOpen={() => setActive(task)}
                       onAdvance={() => {
                         const next: Record<string, TaskStatus> = { draft: "todo", todo: "doing", doing: "done", done: "done" };
@@ -259,7 +262,6 @@ function TasksPage() {
       )}
 
       {active && <TaskDetail task={active} onClose={() => setActive(null)} onUpdated={() => { void load(); }} onDelete={(id) => { deleteTask(id); setActive(null); }} />}
-      {pomoTask && <PomodoroModal task={pomoTask} onClose={() => { setPomoTask(null); void load(); }} />}
     </div>
   );
 }
