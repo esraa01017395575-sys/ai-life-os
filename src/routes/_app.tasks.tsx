@@ -268,11 +268,13 @@ function TasksPage() {
 
 /* ============== Task Card ============== */
 function TaskCard({
-  task, subs, aiBusy, onOpen, onAdvance, onMove, onDelete, onDragStart, onDragEnd, onAi, onPomodoro,
+  task, subs, aiBusy, expanded, pomoActive, onOpen, onAdvance, onMove, onDelete, onDragStart, onDragEnd, onAi, onPomodoro,
 }: {
   task: Task;
   subs: Subtask[];
   aiBusy: string | null;
+  expanded: boolean;
+  pomoActive: boolean;
   onOpen: () => void;
   onAdvance: () => void;
   onMove: (s: TaskStatus) => void;
