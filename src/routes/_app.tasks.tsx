@@ -494,7 +494,7 @@ function TaskDetail({
   const [subs, setSubs] = useState<Subtask[]>([]);
   const [newSub, setNewSub] = useState("");
   const [genLoading, setGenLoading] = useState(false);
-  const [showPomo, setShowPomo] = useState(false);
+  // showPomo removed — pomodoro is now inline on cards + floating widget
   const [edited, setEdited] = useState(task);
   const [saving, setSaving] = useState(false);
 
