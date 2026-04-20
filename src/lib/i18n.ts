@@ -80,7 +80,6 @@ export const translations = {
     confirmDelete: "Are you sure? This cannot be undone.",
     // Plans
     addPlan: "Create plan",
-    monthly: "Monthly",
     quarterly: "Quarterly",
     yearly: "Yearly",
     milestones: "Milestones",
