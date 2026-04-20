@@ -8,7 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePrefs } from "@/contexts/PrefsContext";
 import { supabase } from "@/integrations/supabase/client";
 import { TASK_STATUSES, TASK_STATUS_LABEL, PRIORITIES, type TaskStatus } from "@/lib/constants";
-import { Pomodoro } from "@/components/Pomodoro";
+import { PomodoroInline } from "@/components/PomodoroInline";
+import { usePomodoro } from "@/contexts/PomodoroContext";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/tasks")({
