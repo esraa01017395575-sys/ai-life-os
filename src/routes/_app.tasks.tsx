@@ -705,28 +705,7 @@ function TaskDetail({
                   className="w-full mt-2 h-10 px-3 rounded-xl bg-app-card border border-app focus:border-accent outline-none text-sm text-app" />
               </label>
 
-              {/* Pomodoro */}
-              <button onClick={() => setShowPomo((v) => !v)}
-                className="w-full h-10 rounded-xl bg-app-card border border-app text-sm font-medium hover:border-accent flex items-center justify-center gap-2 transition-colors">
-                <Clock className="h-4 w-4" /> {showPomo ? "Hide Pomodoro" : (t("startPomodoro") || "Start Pomodoro")}
-              </button>
-              {showPomo && (
-                <div className="rounded-2xl bg-app-card border border-app p-4">
-                  <Pomodoro
-                    workMin={edited.pomodoro_work ?? 25}
-                    breakMin={edited.pomodoro_break ?? 5}
-                    onComplete={async (mins) => {
-                      if (!user) return;
-                      await supabase.from("pomodoro_sessions").insert({ user_id: user.id, task_id: task.id, duration_min: mins });
-                      await supabase.from("tasks").update({
-                        pomodoro_count: (task.pomodoro_count ?? 0) + 1,
-                        actual_min: (task.actual_min ?? 0) + mins,
-                      }).eq("id", task.id);
-                      onUpdated();
-                    }}
-                  />
-                </div>
-              )}
+              {/* Pomodoro moved out of the form — start it from the task card (inline + floating). */}
             </div>
           </div>
         </div>
