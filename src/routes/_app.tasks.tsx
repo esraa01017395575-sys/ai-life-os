@@ -58,7 +58,7 @@ function TasksPage() {
   async function load() {
     if (!user) return;
     const { data } = await supabase.from("tasks").select("*").eq("user_id", user.id).order("order_index");
-    const list = (data ?? []) as Task[];
+    const list = (data ?? []) as unknown as Task[];
     setTasks(list);
     const ids = list.map((x) => x.id);
     if (ids.length) {
@@ -81,7 +81,7 @@ function TasksPage() {
       due_date: todayIso,
     }).select().single();
     if (error) { toast.error(error.message); return; }
-    setTasks((ts) => [...ts, data as Task]);
+    setTasks((ts) => [...ts, data as unknown as Task]);
     setNewTitle("");
     setCreatingIn(null);
     toast.success(lang === "ar" ? "تم إنشاء المهمة" : "Task created");
