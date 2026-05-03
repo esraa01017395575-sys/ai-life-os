@@ -565,6 +565,7 @@ function TaskDetail({
       status: edited.status, category: edited.category, estimated_min: edited.estimated_min,
       due_date: edited.due_date, scheduled_at: edited.scheduled_at,
       pomodoro_work: edited.pomodoro_work, pomodoro_break: edited.pomodoro_break,
+      attachments: (edited.attachments ?? []) as any,
     }).eq("id", task.id);
     setSaving(false);
     if (error) toast.error(error.message);
