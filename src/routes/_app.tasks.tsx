@@ -714,6 +714,9 @@ function TaskDetail({
                   className="w-full mt-2 h-10 px-3 rounded-xl bg-app-card border border-app focus:border-accent outline-none text-sm text-app" />
               </label>
 
+              {/* Attachments */}
+              <Attachments task={edited} onChange={(atts) => setEdited({ ...edited, attachments: atts })} />
+
               {/* Pomodoro moved out of the form — start it from the task card (inline + floating). */}
             </div>
           </div>
