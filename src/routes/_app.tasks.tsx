@@ -17,12 +17,14 @@ export const Route = createFileRoute("/_app/tasks")({
   component: TasksPage,
 });
 
+interface Attachment { name: string; path: string; size: number; type: string }
 interface Task {
   id: string; title: string; description: string | null; status: string;
   priority: string; category: string | null; due_date: string | null;
   scheduled_at: string | null; estimated_min: number | null;
   pomodoro_work: number | null; pomodoro_break: number | null; xp_reward: number;
   pomodoro_count?: number; actual_min?: number;
+  attachments?: Attachment[];
 }
 interface Subtask { id: string; title: string; status: string; order_index: number; task_id?: string }
 
@@ -56,7 +58,7 @@ function TasksPage() {
   async function load() {
     if (!user) return;
     const { data } = await supabase.from("tasks").select("*").eq("user_id", user.id).order("order_index");
-    const list = (data ?? []) as Task[];
+    const list = (data ?? []) as unknown as Task[];
     setTasks(list);
     const ids = list.map((x) => x.id);
     if (ids.length) {
@@ -73,25 +75,35 @@ function TasksPage() {
 
   async function createTask(status: TaskStatus) {
     if (!user || !newTitle.trim()) { setCreatingIn(null); setNewTitle(""); return; }
+    const todayIso = new Date().toISOString().slice(0, 10) + "T23:59:00";
     const { data, error } = await supabase.from("tasks").insert({
       user_id: user.id, title: newTitle.trim(), status, priority: "medium",
+      due_date: todayIso,
     }).select().single();
     if (error) { toast.error(error.message); return; }
-    setTasks((ts) => [...ts, data as Task]);
+    setTasks((ts) => [...ts, data as unknown as Task]);
     setNewTitle("");
     setCreatingIn(null);
+    toast.success(lang === "ar" ? "تم إنشاء المهمة" : "Task created");
   }
 
   async function updateStatus(id: string, status: TaskStatus) {
     if (!user) return;
+    const prev = tasks.find((x) => x.id === id);
     if (status === "done") {
       const { error } = await supabase.rpc("complete_task", { p_task_id: id, p_user_id: user.id });
       if (error) { toast.error(error.message); return; }
+      toast.success(lang === "ar" ? "🎉 مكتمل! +XP" : "🎉 Completed! +XP");
       void load();
     } else {
       const { error } = await supabase.from("tasks").update({ status }).eq("id", id);
-      if (error) toast.error(error.message);
-      else setTasks((ts) => ts.map((t) => t.id === id ? { ...t, status } : t));
+      if (error) { toast.error(error.message); return; }
+      setTasks((ts) => ts.map((t) => t.id === id ? { ...t, status } : t));
+      if (prev && prev.status !== status) {
+        toast(lang === "ar" ? "تم تحديث الحالة" : "Status updated", {
+          description: `${TASK_STATUS_LABEL[prev.status as TaskStatus]?.[lang] ?? prev.status} → ${TASK_STATUS_LABEL[status][lang]}`,
+        });
+      }
     }
   }
 
@@ -366,27 +378,24 @@ function TaskCard({
       </div>
 
       {/* Meta row */}
-      {(task.estimated_min || task.due_date || (task.priority && task.priority !== "medium")) && (
-        <div className="flex flex-wrap gap-1.5 mt-2.5">
-          {task.priority && task.priority !== "medium" && (
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium uppercase tracking-wide ${
-              task.priority === "urgent" ? "bg-danger/15 text-danger" :
-              task.priority === "high"   ? "bg-warning/15 text-warning" :
-                                           "bg-app-secondary text-app-muted"
-            }`}>{task.priority}</span>
-          )}
-          {task.estimated_min && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-app-secondary text-app-muted flex items-center gap-1">
-              <Clock className="h-2.5 w-2.5" /> {task.estimated_min}m
-            </span>
-          )}
-          {task.due_date && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-app-secondary text-app-muted">
-              {new Date(task.due_date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-            </span>
-          )}
-        </div>
-      )}
+      <div className="flex flex-wrap gap-1.5 mt-2.5">
+        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold uppercase tracking-wide ${
+          task.priority === "urgent" ? "bg-danger/15 text-danger" :
+          task.priority === "high"   ? "bg-warning/15 text-warning" :
+          task.priority === "medium" ? "bg-accent/10 text-accent" :
+                                       "bg-app-secondary text-app-faint"
+        }`}>{task.priority}</span>
+        {task.estimated_min && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-app-secondary text-app-muted flex items-center gap-1">
+            <Clock className="h-2.5 w-2.5" /> {task.estimated_min}m
+          </span>
+        )}
+        {task.due_date && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-app-secondary text-app-muted">
+            {new Date(task.due_date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+          </span>
+        )}
+      </div>
 
       {/* Subtasks preview */}
       {subs.length > 0 && (
@@ -556,6 +565,7 @@ function TaskDetail({
       status: edited.status, category: edited.category, estimated_min: edited.estimated_min,
       due_date: edited.due_date, scheduled_at: edited.scheduled_at,
       pomodoro_work: edited.pomodoro_work, pomodoro_break: edited.pomodoro_break,
+      attachments: (edited.attachments ?? []) as any,
     }).eq("id", task.id);
     setSaving(false);
     if (error) toast.error(error.message);
@@ -705,6 +715,9 @@ function TaskDetail({
                   className="w-full mt-2 h-10 px-3 rounded-xl bg-app-card border border-app focus:border-accent outline-none text-sm text-app" />
               </label>
 
+              {/* Attachments */}
+              <Attachments task={edited} onChange={(atts) => setEdited({ ...edited, attachments: atts })} />
+
               {/* Pomodoro moved out of the form — start it from the task card (inline + floating). */}
             </div>
           </div>
@@ -746,6 +759,62 @@ function Segmented<T extends string>({
           {o.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/* ============== Attachments ============== */
+function Attachments({ task, onChange }: { task: Task; onChange: (atts: Attachment[]) => void }) {
+  const { user } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const list = task.attachments ?? [];
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!user || !e.target.files?.length) return;
+    setBusy(true);
+    const next: Attachment[] = [...list];
+    for (const file of Array.from(e.target.files)) {
+      const path = `${user.id}/${task.id}/${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from("task-attachments").upload(path, file);
+      if (error) { toast.error(error.message); continue; }
+      next.push({ name: file.name, path, size: file.size, type: file.type });
+    }
+    onChange(next);
+    setBusy(false);
+    toast.success("Uploaded");
+    e.target.value = "";
+  }
+
+  async function openAtt(att: Attachment) {
+    const { data } = await supabase.storage.from("task-attachments").createSignedUrl(att.path, 60 * 5);
+    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+  }
+
+  async function removeAtt(att: Attachment) {
+    await supabase.storage.from("task-attachments").remove([att.path]);
+    onChange(list.filter((a) => a.path !== att.path));
+  }
+
+  return (
+    <div>
+      <div className="text-xs font-medium text-app-muted uppercase tracking-wider mb-2">Attachments</div>
+      <div className="rounded-2xl bg-app-card border border-app p-3 space-y-2">
+        {list.length === 0 && <div className="text-xs text-app-muted text-center py-2">No files yet</div>}
+        {list.map((a) => (
+          <div key={a.path} className="flex items-center gap-2 text-xs bg-app-secondary rounded-lg px-2 py-1.5">
+            <button onClick={() => openAtt(a)} className="flex-1 text-left truncate text-app hover:text-accent">{a.name}</button>
+            <button onClick={() => removeAtt(a)} className="text-app-muted hover:text-danger">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+        <label className="block">
+          <input type="file" multiple onChange={handleUpload} disabled={busy} className="hidden" />
+          <span className="block text-center cursor-pointer h-9 leading-9 rounded-lg bg-app-secondary text-xs text-app-muted hover:text-accent border border-dashed border-app hover:border-accent/40 transition-colors">
+            {busy ? "Uploading..." : "+ Add files"}
+          </span>
+        </label>
+      </div>
     </div>
   );
 }

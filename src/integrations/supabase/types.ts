@@ -465,6 +465,33 @@ export type Database = {
         }
         Relationships: []
       }
+      quotes: {
+        Row: {
+          author: string | null
+          category: string | null
+          created_at: string
+          id: string
+          text_ar: string
+          text_en: string
+        }
+        Insert: {
+          author?: string | null
+          category?: string | null
+          created_at?: string
+          id?: string
+          text_ar: string
+          text_en: string
+        }
+        Update: {
+          author?: string | null
+          category?: string | null
+          created_at?: string
+          id?: string
+          text_ar?: string
+          text_en?: string
+        }
+        Relationships: []
+      }
       subtasks: {
         Row: {
           created_at: string

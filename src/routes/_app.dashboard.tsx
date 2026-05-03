@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sparkles, Plus, ArrowRight, Flame } from "lucide-react";
+import { Sparkles, Plus, ArrowRight, Flame, Quote } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePrefs } from "@/contexts/PrefsContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,24 +20,32 @@ function greet(t: (k: any) => string) {
   return t("goodEvening");
 }
 
+// Stable per-user-per-day index
+function dayHash(seed: string) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return h;
+}
+
 function Dashboard() {
   const { user } = useAuth();
-  const { t } = usePrefs();
+  const { t, lang } = usePrefs();
   const [name, setName] = useState("");
   const [level, setLevel] = useState(1);
   const [xp, setXp] = useState(0);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
-  const [quote, setQuote] = useState<string | null>(null);
-  const [quoteLoading, setQuoteLoading] = useState(true);
+  const [quote, setQuote] = useState<{ text: string; author?: string | null } | null>(null);
+  const [welcome, setWelcome] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     void (async () => {
       const { data: prof } = await supabase.from("profiles")
         .select("name, level, total_xp").eq("user_id", user.id).maybeSingle();
+      const userName = prof?.name ?? user.email?.split("@")[0] ?? "";
       if (prof) {
-        setName(prof.name ?? user.email?.split("@")[0] ?? "");
+        setName(userName);
         setLevel(prof.level ?? 1);
         setXp(prof.total_xp ?? 0);
       }
@@ -51,30 +59,36 @@ function Dashboard() {
         .eq("user_id", user.id).eq("active", true).limit(8);
       setHabits((hs ?? []) as Habit[]);
 
+      // Pick today's quote (deterministic per user+day) from quotes library
       const today = new Date().toISOString().slice(0, 10);
-      const { data: q } = await supabase.from("daily_quotes")
+      const { data: cached } = await supabase.from("daily_quotes")
         .select("text").eq("user_id", user.id).eq("quote_date", today).maybeSingle();
-      if (q?.text) {
-        setQuote(q.text);
-        setQuoteLoading(false);
+      if (cached?.text) {
+        setQuote({ text: cached.text });
       } else {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-quote`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
-            body: JSON.stringify({ name }),
-          });
-          const j = await r.json();
-          if (j.text) {
-            setQuote(j.text);
-            await supabase.from("daily_quotes").insert({ user_id: user.id, text: j.text });
-          }
-        } catch (e) { console.error(e); }
-        setQuoteLoading(false);
+        const { data: pool } = await supabase.from("quotes").select("text_en, text_ar, author");
+        if (pool && pool.length) {
+          const idx = dayHash(user.id + today) % pool.length;
+          const q = pool[idx];
+          const text = lang === "ar" ? q.text_ar : q.text_en;
+          setQuote({ text, author: q.author });
+          await supabase.from("daily_quotes").insert({ user_id: user.id, text });
+        }
       }
+
+      // AI personalized daily check-in (warm 1-line welcome)
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-quote`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+          body: JSON.stringify({ name: userName, lang }),
+        });
+        const j = await r.json();
+        if (j.text) setWelcome(j.text);
+      } catch (e) { console.error(e); }
     })();
-  }, [user]);
+  }, [user, lang]);
 
   const today = new Date().toISOString().slice(0, 10);
   const habitsDoneToday = habits.filter((h) => h.last_completed_on === today).length;
@@ -98,7 +112,7 @@ function Dashboard() {
 
   return (
     <div className="relative p-6 max-w-7xl mx-auto space-y-6">
-      {/* HERO — large character, no ring inside */}
+      {/* HERO */}
       <section className="relative animate-fade-in-up">
         <div className="relative overflow-hidden rounded-3xl gradient-hero border border-app shadow-soft">
           <div className="grid md:grid-cols-[1.1fr_1fr] gap-4 items-end">
@@ -115,11 +129,13 @@ function Dashboard() {
                 {greet(t)},<br />
                 <span className="text-gradient">{name || "friend"}</span>
               </h1>
-              <p className="mt-4 text-app-muted text-base md:text-lg max-w-md leading-relaxed">
-                {quoteLoading ? "Loading inspiration..." : (quote ?? "Let's make today count.")}
-              </p>
+              {welcome && (
+                <p className="mt-4 text-app text-base md:text-lg max-w-md leading-relaxed font-medium">
+                  {welcome}
+                </p>
+              )}
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link to="/tasks" className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-accent text-white font-semibold hover-lift shadow-soft">
+                <Link to="/tasks" search={{ view: "kanban" }} className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-accent text-white font-semibold hover-lift shadow-soft">
                   <Plus className="h-4 w-4" /> {t("newTask") || "New Task"}
                 </Link>
                 <Link to="/chat" className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-app-card border border-app text-app font-semibold hover:border-accent transition-all">
@@ -128,7 +144,6 @@ function Dashboard() {
               </div>
             </div>
 
-            {/* Big character */}
             <div className="flex items-end justify-center md:justify-end pr-4 md:pr-8">
               <img
                 src={heroCharacter}
@@ -142,6 +157,24 @@ function Dashboard() {
         </div>
       </section>
 
+      {/* DAILY QUOTE */}
+      {quote && (
+        <section className="animate-fade-in-up">
+          <div className="glass-card p-5 md:p-6 flex items-start gap-4 border-l-4 border-accent">
+            <div className="h-10 w-10 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
+              <Quote className="h-5 w-5 text-accent" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-wider text-app-muted font-semibold mb-1">
+                {lang === "ar" ? "اقتباس اليوم" : "Quote of the day"}
+              </div>
+              <p className="text-app text-base md:text-lg font-display leading-snug">{quote.text}</p>
+              {quote.author && <div className="text-xs text-app-muted mt-2">— {quote.author}</div>}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* STAT TILES + PROGRESS RING */}
       <section className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-4">
         <StatTile label={t("level")} value={`L${level}`} hint="keep going" />
@@ -152,7 +185,7 @@ function Dashboard() {
 
       {/* TASKS + HABITS */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <PanelCard title={t("yourTasksToday")} link="/tasks">
+        <PanelCard title={t("yourTasksToday")} link="/tasks" linkSearch={{ view: "kanban" }}>
           {tasks.length === 0 ? (
             <EmptyState illu={illuTasks} text={t("noTasks") || "All clear! Add a new task."} />
           ) : (
@@ -255,13 +288,14 @@ function StatTile({ label, value, hint, accent }: { label: string; value: string
   );
 }
 
-function PanelCard({ title, link, children }: any) {
+function PanelCard({ title, link, linkSearch, children }: { title: string; link: string; linkSearch?: any; children: any }) {
   return (
     <div className="glass-card p-5">
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-display font-bold text-lg text-app">{title}</h2>
         <Link
-          to={link}
+          to={link as any}
+          {...(linkSearch ? { search: linkSearch } : {})}
           className="text-xs font-medium flex items-center gap-1 hover:gap-2 text-app-muted hover:text-accent transition-all"
         >
           View all <ArrowRight className="h-3 w-3" />
@@ -274,7 +308,8 @@ function PanelCard({ title, link, children }: any) {
 
 function PriorityBadge({ priority }: { priority: string }) {
   const map: Record<string, { cls: string; label: string }> = {
-    high:   { cls: "bg-accent/15 text-accent",       label: "High" },
+    urgent: { cls: "bg-danger/15 text-danger",        label: "Urg"  },
+    high:   { cls: "bg-warning/15 text-warning",      label: "High" },
     medium: { cls: "bg-app-secondary text-app-muted", label: "Med"  },
     low:    { cls: "bg-app-secondary text-app-faint", label: "Low"  },
   };

@@ -1,4 +1,4 @@
-// Generates a short motivational daily quote using Gemini via Lovable AI Gateway.
+// Generates a short personalized daily welcome using Gemini via Lovable AI Gateway.
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -15,9 +15,12 @@ serve(async (req) => {
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
+    const hour = new Date().getUTCHours();
+    const part = hour < 10 ? "morning" : hour < 16 ? "afternoon" : "evening";
+
     const prompt = lang === "ar"
-      ? `اكتب جملة تحفيزية قصيرة (لا تتجاوز سطرين) لـ ${name || "المستخدم"} لبدء يومه. لا تستخدم رموز markdown ولا علامات اقتباس. نص نظيف فقط.`
-      : `Write a short motivational sentence (max 2 short lines) for ${name || "the user"} to start their day. No markdown, no quote marks. Plain text only.`;
+      ? `اكتب رسالة ترحيب شخصية قصيرة جداً (سطر واحد، لا تتعدى 18 كلمة) باللهجة المصرية العامية لـ ${name || "المستخدم"} في الـ${part}. اذكر اسمه إن أمكن. ابدأ بنبرة دافئة وحافز للإنتاجية. بدون علامات اقتباس أو رموز.`
+      : `Write a short, personal one-line welcome (max 18 words) for ${name || "the user"} this ${part}. Warm tone, productivity-focused. No quotes, no markdown.`;
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
