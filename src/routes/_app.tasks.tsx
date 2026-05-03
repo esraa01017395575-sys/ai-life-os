@@ -17,12 +17,14 @@ export const Route = createFileRoute("/_app/tasks")({
   component: TasksPage,
 });
 
+interface Attachment { name: string; path: string; size: number; type: string }
 interface Task {
   id: string; title: string; description: string | null; status: string;
   priority: string; category: string | null; due_date: string | null;
   scheduled_at: string | null; estimated_min: number | null;
   pomodoro_work: number | null; pomodoro_break: number | null; xp_reward: number;
   pomodoro_count?: number; actual_min?: number;
+  attachments?: Attachment[];
 }
 interface Subtask { id: string; title: string; status: string; order_index: number; task_id?: string }
 
