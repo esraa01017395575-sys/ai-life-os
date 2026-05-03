@@ -762,3 +762,59 @@ function Segmented<T extends string>({
     </div>
   );
 }
+
+/* ============== Attachments ============== */
+function Attachments({ task, onChange }: { task: Task; onChange: (atts: Attachment[]) => void }) {
+  const { user } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const list = task.attachments ?? [];
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!user || !e.target.files?.length) return;
+    setBusy(true);
+    const next: Attachment[] = [...list];
+    for (const file of Array.from(e.target.files)) {
+      const path = `${user.id}/${task.id}/${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from("task-attachments").upload(path, file);
+      if (error) { toast.error(error.message); continue; }
+      next.push({ name: file.name, path, size: file.size, type: file.type });
+    }
+    onChange(next);
+    setBusy(false);
+    toast.success("Uploaded");
+    e.target.value = "";
+  }
+
+  async function openAtt(att: Attachment) {
+    const { data } = await supabase.storage.from("task-attachments").createSignedUrl(att.path, 60 * 5);
+    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+  }
+
+  async function removeAtt(att: Attachment) {
+    await supabase.storage.from("task-attachments").remove([att.path]);
+    onChange(list.filter((a) => a.path !== att.path));
+  }
+
+  return (
+    <div>
+      <div className="text-xs font-medium text-app-muted uppercase tracking-wider mb-2">Attachments</div>
+      <div className="rounded-2xl bg-app-card border border-app p-3 space-y-2">
+        {list.length === 0 && <div className="text-xs text-app-muted text-center py-2">No files yet</div>}
+        {list.map((a) => (
+          <div key={a.path} className="flex items-center gap-2 text-xs bg-app-secondary rounded-lg px-2 py-1.5">
+            <button onClick={() => openAtt(a)} className="flex-1 text-left truncate text-app hover:text-accent">{a.name}</button>
+            <button onClick={() => removeAtt(a)} className="text-app-muted hover:text-danger">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+        <label className="block">
+          <input type="file" multiple onChange={handleUpload} disabled={busy} className="hidden" />
+          <span className="block text-center cursor-pointer h-9 leading-9 rounded-lg bg-app-secondary text-xs text-app-muted hover:text-accent border border-dashed border-app hover:border-accent/40 transition-colors">
+            {busy ? "Uploading..." : "+ Add files"}
+          </span>
+        </label>
+      </div>
+    </div>
+  );
+}
