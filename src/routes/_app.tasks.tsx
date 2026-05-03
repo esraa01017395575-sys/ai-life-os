@@ -73,25 +73,35 @@ function TasksPage() {
 
   async function createTask(status: TaskStatus) {
     if (!user || !newTitle.trim()) { setCreatingIn(null); setNewTitle(""); return; }
+    const todayIso = new Date().toISOString().slice(0, 10) + "T23:59:00";
     const { data, error } = await supabase.from("tasks").insert({
       user_id: user.id, title: newTitle.trim(), status, priority: "medium",
+      due_date: todayIso,
     }).select().single();
     if (error) { toast.error(error.message); return; }
     setTasks((ts) => [...ts, data as Task]);
     setNewTitle("");
     setCreatingIn(null);
+    toast.success(lang === "ar" ? "تم إنشاء المهمة" : "Task created");
   }
 
   async function updateStatus(id: string, status: TaskStatus) {
     if (!user) return;
+    const prev = tasks.find((x) => x.id === id);
     if (status === "done") {
       const { error } = await supabase.rpc("complete_task", { p_task_id: id, p_user_id: user.id });
       if (error) { toast.error(error.message); return; }
+      toast.success(lang === "ar" ? "🎉 مكتمل! +XP" : "🎉 Completed! +XP");
       void load();
     } else {
       const { error } = await supabase.from("tasks").update({ status }).eq("id", id);
-      if (error) toast.error(error.message);
-      else setTasks((ts) => ts.map((t) => t.id === id ? { ...t, status } : t));
+      if (error) { toast.error(error.message); return; }
+      setTasks((ts) => ts.map((t) => t.id === id ? { ...t, status } : t));
+      if (prev && prev.status !== status) {
+        toast(lang === "ar" ? "تم تحديث الحالة" : "Status updated", {
+          description: `${TASK_STATUS_LABEL[prev.status as TaskStatus]?.[lang] ?? prev.status} → ${TASK_STATUS_LABEL[status][lang]}`,
+        });
+      }
     }
   }
 
