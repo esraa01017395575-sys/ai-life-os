@@ -376,27 +376,24 @@ function TaskCard({
       </div>
 
       {/* Meta row */}
-      {(task.estimated_min || task.due_date || (task.priority && task.priority !== "medium")) && (
-        <div className="flex flex-wrap gap-1.5 mt-2.5">
-          {task.priority && task.priority !== "medium" && (
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium uppercase tracking-wide ${
-              task.priority === "urgent" ? "bg-danger/15 text-danger" :
-              task.priority === "high"   ? "bg-warning/15 text-warning" :
-                                           "bg-app-secondary text-app-muted"
-            }`}>{task.priority}</span>
-          )}
-          {task.estimated_min && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-app-secondary text-app-muted flex items-center gap-1">
-              <Clock className="h-2.5 w-2.5" /> {task.estimated_min}m
-            </span>
-          )}
-          {task.due_date && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-app-secondary text-app-muted">
-              {new Date(task.due_date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-            </span>
-          )}
-        </div>
-      )}
+      <div className="flex flex-wrap gap-1.5 mt-2.5">
+        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold uppercase tracking-wide ${
+          task.priority === "urgent" ? "bg-danger/15 text-danger" :
+          task.priority === "high"   ? "bg-warning/15 text-warning" :
+          task.priority === "medium" ? "bg-accent/10 text-accent" :
+                                       "bg-app-secondary text-app-faint"
+        }`}>{task.priority}</span>
+        {task.estimated_min && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-app-secondary text-app-muted flex items-center gap-1">
+            <Clock className="h-2.5 w-2.5" /> {task.estimated_min}m
+          </span>
+        )}
+        {task.due_date && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-app-secondary text-app-muted">
+            {new Date(task.due_date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+          </span>
+        )}
+      </div>
 
       {/* Subtasks preview */}
       {subs.length > 0 && (
