@@ -77,7 +77,12 @@ function HabitsPage() {
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     if (Notification.permission === "default") {
-      Notification.requestPermission().catch(() => {});
+      Notification.requestPermission().then((p) => {
+        if (p === "granted") toast.success("Reminders enabled");
+        else if (p === "denied") toast("Notifications blocked. Enable them in browser settings.");
+      }).catch(() => {});
+    } else if (Notification.permission === "denied") {
+      // Silent — only inform once when user tries to set a reminder.
     }
   }, []);
 
@@ -85,16 +90,14 @@ function HabitsPage() {
   const fired = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
-    const today = new Date().toISOString().slice(0, 10);
-    fired.current = new Set(); // reset daily check on mount
+    fired.current = new Set();
 
-    const id = setInterval(() => {
-      if (Notification.permission !== "granted") return;
+    const check = () => {
       const now = new Date();
       const todayKey = now.toISOString().slice(0, 10);
       habits.forEach((h) => {
         if (!h.reminder_time || h.reminders.length === 0) return;
-        if (h.last_completed_on === today) return;
+        if (h.last_completed_on === todayKey) return;
         const [hh, mm] = h.reminder_time.split(":").map(Number);
         const target = new Date(now);
         target.setHours(hh, mm, 0, 0);
@@ -102,21 +105,21 @@ function HabitsPage() {
           const fireAt = new Date(target.getTime() - mins * 60_000);
           const key = `${h.id}:${todayKey}:${mins}`;
           if (fired.current.has(key)) return;
-          // Within a 60-second window in the past
           const diff = now.getTime() - fireAt.getTime();
-          if (diff >= 0 && diff < 60_000) {
-            try {
-              new Notification(`${h.title}`, {
-                body: mins === 0 ? `It's time` : `Starts in ${mins} min`,
-                tag: key,
-              });
-            } catch { /* noop */ }
-            toast(`${h.title} — ${mins === 0 ? "now" : `in ${mins}m`}`);
+          // 2-minute catch-up window
+          if (diff >= 0 && diff < 120_000) {
+            const body = mins === 0 ? "It's time now" : `Starts in ${mins} min`;
+            if (Notification.permission === "granted") {
+              try { new Notification(h.title, { body, tag: key }); } catch { /* noop */ }
+            }
+            toast(`🔔 ${h.title} — ${body}`);
             fired.current.add(key);
           }
         });
       });
-    }, 30_000);
+    };
+    check(); // run once immediately
+    const id = setInterval(check, 20_000);
     return () => clearInterval(id);
   }, [habits]);
 
