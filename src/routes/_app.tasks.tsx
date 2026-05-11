@@ -465,21 +465,35 @@ function CalendarView({ tasks, onPick }: { tasks: Task[]; onPick: (t: Task) => v
   const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(today); d.setDate(today.getDate() + i); return d;
   });
+  const localKey = (d: Date | string) => {
+    const x = typeof d === "string" ? new Date(d) : d;
+    const y = x.getFullYear();
+    const m = String(x.getMonth() + 1).padStart(2, "0");
+    const day = String(x.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3">
       {days.map((d, idx) => {
-        const ds = d.toISOString().slice(0, 10);
-        const dayTasks = tasks.filter((t) => (t.scheduled_at ?? t.due_date)?.slice(0, 10) === ds);
+        const ds = localKey(d);
+        const dayTasks = tasks.filter((t) => {
+          const src = t.scheduled_at ?? t.due_date;
+          return src ? localKey(src) === ds : false;
+        });
         const isToday = idx === 0;
         return (
           <div key={ds} className={`bg-app-card rounded-2xl p-3 min-h-[140px] ${isToday ? "ring-2 ring-accent/40" : ""}`}>
             <div className="text-[10px] uppercase tracking-wider text-app-muted">{d.toLocaleDateString(undefined, { weekday: "short" })}</div>
             <div className={`font-display font-bold text-2xl ${isToday ? "text-accent" : "text-app"}`}>{d.getDate()}</div>
             <div className="space-y-1 mt-2">
+              {dayTasks.length === 0 && (
+                <div className="text-[10px] text-app-faint italic">—</div>
+              )}
               {dayTasks.map((task) => {
                 const conf = STATUS_ACCENT[task.status] ?? STATUS_ACCENT.todo;
                 return (
                   <button key={task.id} onClick={() => onPick(task)}
+                    title={task.title}
                     className="w-full text-left text-xs px-2 py-1.5 rounded-lg bg-app-secondary hover:bg-app-elevated truncate transition-colors flex items-center gap-1.5"
                     style={{ borderLeft: `2px solid ${conf.bar}` }}>
                     <span className="truncate">{task.title}</span>
