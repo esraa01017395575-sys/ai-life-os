@@ -22,7 +22,7 @@ interface Log { habit_id: string; log_date: string; count: number }
 
 const CATEGORIES = ["health", "learning", "productivity", "mindful", "social"] as const;
 const FREQUENCIES = ["daily", "weekly", "monthly"] as const;
-const REMINDER_OPTIONS = [60, 30, 15] as const;
+const REMINDER_OPTIONS = [60, 30, 15, 0] as const;
 
 /** Curated icon set — clean Lucide line icons mapped by key. */
 const ICONS: { key: string; Icon: LucideIcon; color: string }[] = [
@@ -58,7 +58,7 @@ interface HabitForm {
 
 const EMPTY_FORM: HabitForm = {
   title: "", icon: "focus", category: "health", frequency: "daily",
-  target_per_day: 1, xp_per_complete: 20, reminder_time: "", reminders: [],
+  target_per_day: 1, xp_per_complete: 1, reminder_time: "", reminders: [],
 };
 
 function HabitsPage() {
@@ -77,7 +77,12 @@ function HabitsPage() {
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     if (Notification.permission === "default") {
-      Notification.requestPermission().catch(() => {});
+      Notification.requestPermission().then((p) => {
+        if (p === "granted") toast.success("Reminders enabled");
+        else if (p === "denied") toast("Notifications blocked. Enable them in browser settings.");
+      }).catch(() => {});
+    } else if (Notification.permission === "denied") {
+      // Silent — only inform once when user tries to set a reminder.
     }
   }, []);
 
@@ -85,16 +90,14 @@ function HabitsPage() {
   const fired = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
-    const today = new Date().toISOString().slice(0, 10);
-    fired.current = new Set(); // reset daily check on mount
+    fired.current = new Set();
 
-    const id = setInterval(() => {
-      if (Notification.permission !== "granted") return;
+    const check = () => {
       const now = new Date();
       const todayKey = now.toISOString().slice(0, 10);
       habits.forEach((h) => {
         if (!h.reminder_time || h.reminders.length === 0) return;
-        if (h.last_completed_on === today) return;
+        if (h.last_completed_on === todayKey) return;
         const [hh, mm] = h.reminder_time.split(":").map(Number);
         const target = new Date(now);
         target.setHours(hh, mm, 0, 0);
@@ -102,21 +105,21 @@ function HabitsPage() {
           const fireAt = new Date(target.getTime() - mins * 60_000);
           const key = `${h.id}:${todayKey}:${mins}`;
           if (fired.current.has(key)) return;
-          // Within a 60-second window in the past
           const diff = now.getTime() - fireAt.getTime();
-          if (diff >= 0 && diff < 60_000) {
-            try {
-              new Notification(`${h.title}`, {
-                body: mins === 0 ? `It's time` : `Starts in ${mins} min`,
-                tag: key,
-              });
-            } catch { /* noop */ }
-            toast(`${h.title} — ${mins === 0 ? "now" : `in ${mins}m`}`);
+          // 2-minute catch-up window
+          if (diff >= 0 && diff < 120_000) {
+            const body = mins === 0 ? "It's time now" : `Starts in ${mins} min`;
+            if (Notification.permission === "granted") {
+              try { new Notification(h.title, { body, tag: key }); } catch { /* noop */ }
+            }
+            toast(`🔔 ${h.title} — ${body}`);
             fired.current.add(key);
           }
         });
       });
-    }, 30_000);
+    };
+    check(); // run once immediately
+    const id = setInterval(check, 20_000);
     return () => clearInterval(id);
   }, [habits]);
 
@@ -142,7 +145,7 @@ function HabitsPage() {
       category: (CATEGORIES.includes(h.category as any) ? h.category : "health") as HabitForm["category"],
       frequency: (FREQUENCIES.includes(h.frequency as any) ? h.frequency : "daily") as HabitForm["frequency"],
       target_per_day: h.target_per_day || 1,
-      xp_per_complete: h.xp_per_complete || 20,
+      xp_per_complete: 1,
       reminder_time: h.reminder_time?.slice(0, 5) ?? "",
       reminders: h.reminders ?? [],
     });
@@ -160,7 +163,7 @@ function HabitsPage() {
       category: form.category,
       frequency: form.frequency,
       target_per_day: form.target_per_day,
-      xp_per_complete: form.xp_per_complete,
+      xp_per_complete: 1,
       reminder_time: form.reminder_time || null,
       reminders: form.reminders,
     };
@@ -196,7 +199,7 @@ function HabitsPage() {
       setHabits((hs) => hs.map((x) => x.id === h.id ? { ...x, ...(data as Habit) } : x));
       const today = new Date().toISOString().slice(0, 10);
       setLogs((l) => [...l, { habit_id: h.id, log_date: today, count: 1 }]);
-      toast.success(`+${h.xp_per_complete} XP`);
+      toast.success(`+1 XP`);
     }
   }
 
@@ -279,7 +282,7 @@ function HabitsPage() {
                   <div className="flex items-center gap-3 mt-2 text-xs text-app-muted flex-wrap">
                     <span className="flex items-center gap-1"><Flame className="h-3.5 w-3.5 text-accent" />{h.streak} {t("streakDays")}</span>
                     <span className="flex items-center gap-1"><Trophy className="h-3.5 w-3.5" />{h.best_streak}</span>
-                    <span className="text-accent font-medium">+{h.xp_per_complete} XP</span>
+                    <span className="text-accent font-medium">+1 XP</span>
                     {h.reminder_time && h.reminders.length > 0 ? (
                       <span className="flex items-center gap-1 text-warning"><Bell className="h-3.5 w-3.5" />{h.reminder_time.slice(0, 5)}</span>
                     ) : (
@@ -523,19 +526,7 @@ function HabitModal({
           )}
         </div>
 
-        {/* XP slider */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-app-muted uppercase tracking-wider">XP per completion</label>
-            <span className="text-sm font-mono font-semibold text-accent">{form.xp_per_complete}</span>
-          </div>
-          <input
-            type="range" min={5} max={100} step={5}
-            value={form.xp_per_complete}
-            onChange={(e) => setForm({ ...form, xp_per_complete: Number(e.target.value) })}
-            className="w-full accent-[var(--accent)]"
-          />
-        </div>
+        {/* XP is auto +1 per completion */}
 
         <div className="flex gap-2 pt-2">
           <button type="button" onClick={onClose}

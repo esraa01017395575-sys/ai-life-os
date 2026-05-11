@@ -36,7 +36,6 @@ function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [quote, setQuote] = useState<{ text: string; author?: string | null } | null>(null);
-  const [welcome, setWelcome] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -76,17 +75,6 @@ function Dashboard() {
         }
       }
 
-      // AI personalized daily check-in (warm 1-line welcome)
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-quote`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
-          body: JSON.stringify({ name: userName, lang }),
-        });
-        const j = await r.json();
-        if (j.text) setWelcome(j.text);
-      } catch (e) { console.error(e); }
     })();
   }, [user, lang]);
 
@@ -125,20 +113,18 @@ function Dashboard() {
                   L{level} · {xp} XP
                 </span>
               </div>
-              <h1 className="text-4xl md:text-6xl font-display font-bold leading-[1.05] text-app">
-                {greet(t)},<br />
-                <span className="text-gradient">{name || "friend"}</span>
+              <h1 className="text-2xl md:text-3xl font-display font-semibold text-app-muted">
+                {greet(t)}, <span className="text-app">{name || "friend"}</span>
               </h1>
               {quote && (
-                <p className="mt-4 text-app text-base md:text-lg max-w-md leading-relaxed font-display italic">
-                  "{quote.text}"
-                  {quote.author && <span className="block text-xs text-app-muted mt-1 not-italic">— {quote.author}</span>}
-                </p>
-              )}
-              {welcome && (
-                <p className="mt-2 text-app-muted text-xs max-w-md leading-relaxed">
-                  {welcome}
-                </p>
+                <blockquote className="mt-5 max-w-2xl">
+                  <p className="text-app text-2xl md:text-4xl font-display font-bold leading-tight italic">
+                    "{quote.text}"
+                  </p>
+                  {quote.author && (
+                    <footer className="mt-3 text-sm text-app-muted not-italic">— {quote.author}</footer>
+                  )}
+                </blockquote>
               )}
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link to="/tasks" search={{ view: "kanban" }} className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-accent text-white font-semibold hover-lift shadow-soft">
