@@ -58,7 +58,7 @@ interface HabitForm {
 
 const EMPTY_FORM: HabitForm = {
   title: "", icon: "focus", category: "health", frequency: "daily",
-  target_per_day: 1, xp_per_complete: 20, reminder_time: "", reminders: [],
+  target_per_day: 1, xp_per_complete: 1, reminder_time: "", reminders: [],
 };
 
 function HabitsPage() {
