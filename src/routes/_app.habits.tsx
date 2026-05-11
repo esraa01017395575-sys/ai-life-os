@@ -160,7 +160,7 @@ function HabitsPage() {
       category: form.category,
       frequency: form.frequency,
       target_per_day: form.target_per_day,
-      xp_per_complete: form.xp_per_complete,
+      xp_per_complete: 1,
       reminder_time: form.reminder_time || null,
       reminders: form.reminders,
     };
