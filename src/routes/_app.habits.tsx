@@ -523,19 +523,7 @@ function HabitModal({
           )}
         </div>
 
-        {/* XP slider */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-app-muted uppercase tracking-wider">XP per completion</label>
-            <span className="text-sm font-mono font-semibold text-accent">{form.xp_per_complete}</span>
-          </div>
-          <input
-            type="range" min={5} max={100} step={5}
-            value={form.xp_per_complete}
-            onChange={(e) => setForm({ ...form, xp_per_complete: Number(e.target.value) })}
-            className="w-full accent-[var(--accent)]"
-          />
-        </div>
+        {/* XP is auto +1 per completion */}
 
         <div className="flex gap-2 pt-2">
           <button type="button" onClick={onClose}
