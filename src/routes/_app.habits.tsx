@@ -279,7 +279,7 @@ function HabitsPage() {
                   <div className="flex items-center gap-3 mt-2 text-xs text-app-muted flex-wrap">
                     <span className="flex items-center gap-1"><Flame className="h-3.5 w-3.5 text-accent" />{h.streak} {t("streakDays")}</span>
                     <span className="flex items-center gap-1"><Trophy className="h-3.5 w-3.5" />{h.best_streak}</span>
-                    <span className="text-accent font-medium">+{h.xp_per_complete} XP</span>
+                    <span className="text-accent font-medium">+1 XP</span>
                     {h.reminder_time && h.reminders.length > 0 ? (
                       <span className="flex items-center gap-1 text-warning"><Bell className="h-3.5 w-3.5" />{h.reminder_time.slice(0, 5)}</span>
                     ) : (
