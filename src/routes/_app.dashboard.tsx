@@ -163,23 +163,6 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* DAILY QUOTE */}
-      {quote && (
-        <section className="animate-fade-in-up">
-          <div className="glass-card p-5 md:p-6 flex items-start gap-4 border-l-4 border-accent">
-            <div className="h-10 w-10 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
-              <Quote className="h-5 w-5 text-accent" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] uppercase tracking-wider text-app-muted font-semibold mb-1">
-                {lang === "ar" ? "اقتباس اليوم" : "Quote of the day"}
-              </div>
-              <p className="text-app text-base md:text-lg font-display leading-snug">{quote.text}</p>
-              {quote.author && <div className="text-xs text-app-muted mt-2">— {quote.author}</div>}
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* STAT TILES + PROGRESS RING */}
       <section className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-4">
