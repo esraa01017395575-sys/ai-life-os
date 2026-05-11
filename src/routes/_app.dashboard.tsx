@@ -129,16 +129,17 @@ function Dashboard() {
                 {greet(t)},<br />
                 <span className="text-gradient">{name || "friend"}</span>
               </h1>
-              {quote ? (
+              {quote && (
                 <p className="mt-4 text-app text-base md:text-lg max-w-md leading-relaxed font-display italic">
                   "{quote.text}"
                   {quote.author && <span className="block text-xs text-app-muted mt-1 not-italic">— {quote.author}</span>}
                 </p>
-              ) : welcome ? (
-                <p className="mt-4 text-app-muted text-xs md:text-sm max-w-md leading-relaxed">
+              )}
+              {welcome && (
+                <p className="mt-2 text-app-muted text-xs max-w-md leading-relaxed">
                   {welcome}
                 </p>
-              ) : null}
+              )}
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link to="/tasks" search={{ view: "kanban" }} className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-accent text-white font-semibold hover-lift shadow-soft">
                   <Plus className="h-4 w-4" /> {t("newTask") || "New Task"}
