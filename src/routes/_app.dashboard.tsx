@@ -75,17 +75,6 @@ function Dashboard() {
         }
       }
 
-      // AI personalized daily check-in (warm 1-line welcome)
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-quote`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
-          body: JSON.stringify({ name: userName, lang }),
-        });
-        const j = await r.json();
-        if (j.text) setWelcome(j.text);
-      } catch (e) { console.error(e); }
     })();
   }, [user, lang]);
 
