@@ -142,7 +142,7 @@ function HabitsPage() {
       category: (CATEGORIES.includes(h.category as any) ? h.category : "health") as HabitForm["category"],
       frequency: (FREQUENCIES.includes(h.frequency as any) ? h.frequency : "daily") as HabitForm["frequency"],
       target_per_day: h.target_per_day || 1,
-      xp_per_complete: h.xp_per_complete || 20,
+      xp_per_complete: 1,
       reminder_time: h.reminder_time?.slice(0, 5) ?? "",
       reminders: h.reminders ?? [],
     });
