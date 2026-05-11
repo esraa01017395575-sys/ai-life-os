@@ -196,7 +196,7 @@ function HabitsPage() {
       setHabits((hs) => hs.map((x) => x.id === h.id ? { ...x, ...(data as Habit) } : x));
       const today = new Date().toISOString().slice(0, 10);
       setLogs((l) => [...l, { habit_id: h.id, log_date: today, count: 1 }]);
-      toast.success(`+${h.xp_per_complete} XP`);
+      toast.success(`+1 XP`);
     }
   }
 
