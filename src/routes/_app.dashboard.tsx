@@ -36,7 +36,6 @@ function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [quote, setQuote] = useState<{ text: string; author?: string | null } | null>(null);
-  const [welcome, setWelcome] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
