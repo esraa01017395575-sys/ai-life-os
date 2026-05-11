@@ -22,7 +22,7 @@ interface Log { habit_id: string; log_date: string; count: number }
 
 const CATEGORIES = ["health", "learning", "productivity", "mindful", "social"] as const;
 const FREQUENCIES = ["daily", "weekly", "monthly"] as const;
-const REMINDER_OPTIONS = [60, 30, 15] as const;
+const REMINDER_OPTIONS = [60, 30, 15, 0] as const;
 
 /** Curated icon set — clean Lucide line icons mapped by key. */
 const ICONS: { key: string; Icon: LucideIcon; color: string }[] = [
