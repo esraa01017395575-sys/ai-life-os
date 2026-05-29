@@ -7,6 +7,8 @@ import { PomodoroProvider } from "@/contexts/PomodoroContext";
 import { PomodoroFloating } from "@/components/PomodoroFloating";
 
 const GTM_ID = "GTM-PRVSSQVG";
+
+function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-app px-4">
       <div className="max-w-md text-center">
@@ -35,6 +37,12 @@ export const Route = createRootRoute({
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0ec74ce1-40ec-4a25-8c1e-18f8203fbf25/id-preview-229e317f--2a6989fe-d83b-49c3-a592-36027185c85e.lovable.app-1776688538251.png" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
+    scripts: [
+      {
+        type: "text/javascript",
+        children: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0], j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${GTM_ID}');`,
+      },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -48,6 +56,15 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <noscript>
+          <iframe
+            src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+            title="gtm"
+          />
+        </noscript>
         {children}
         <Scripts />
       </body>
