@@ -6,7 +6,7 @@ import { PrefsProvider } from "@/contexts/PrefsContext";
 import { PomodoroProvider } from "@/contexts/PomodoroContext";
 import { PomodoroFloating } from "@/components/PomodoroFloating";
 
-function NotFoundComponent() {
+const GTM_ID = "GTM-PRVSSQVG";
   return (
     <div className="flex min-h-screen items-center justify-center bg-app px-4">
       <div className="max-w-md text-center">
